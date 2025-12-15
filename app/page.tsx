@@ -1,37 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Mic, TrendingUp, Sparkles } from "lucide-react";
+import Navbar from "@/components/Navbar";
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-white">
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-        <nav className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          {/* Logo */}
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-primary-yellow" aria-hidden="true" />
-            <span className="text-xl font-bold text-text-primary">Discovery</span>
-          </div>
-
-          {/* Navigation Buttons */}
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              className="text-text-primary hover:bg-soft-yellow"
-              aria-label="Fazer login"
-            >
-              Login
-            </Button>
-            <Button 
-              className="bg-primary-yellow text-text-primary hover:bg-primary-yellow/90 font-semibold"
-              aria-label="Criar conta"
-            >
-              Registar
-            </Button>
-          </div>
-        </nav>
-      </header>
+      <Navbar />
 
       <main>
         {/* Hero Section */}
