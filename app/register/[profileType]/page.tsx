@@ -7,10 +7,17 @@ import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Navbar from "@/components/Navbar";
 import { ArrowLeft } from "lucide-react";
-import { ProfileType, RegistrationFormData } from "@/types/auth";
+import { ProfileType, RegistrationFormData, FuncaoProfissional } from "@/types/auth";
 
 export default function RegisterFormPage() {
   const router = useRouter();
@@ -18,10 +25,12 @@ export default function RegisterFormPage() {
   const profileType = params.profileType as ProfileType;
 
   const [formData, setFormData] = useState<RegistrationFormData>({
+    nome: "",
     email: "",
     password: "",
     escola_instituicao: "",
     ano_escolaridade: undefined,
+    funcao: undefined,
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -42,7 +51,19 @@ export default function RegisterFormPage() {
     }));
   };
 
+  const handleSelectChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      funcao: value as FuncaoProfissional,
+    }));
+  };
+
   const validateForm = (): boolean => {
+    if (!formData.nome || formData.nome.trim().length < 2) {
+      setError("Por favor, introduza o seu nome completo (mínimo 2 caracteres).");
+      return false;
+    }
+
     if (!formData.email || !formData.email.includes("@")) {
       setError("Por favor, introduza um email válido.");
       return false;
@@ -62,6 +83,13 @@ export default function RegisterFormPage() {
       const ano = formData.ano_escolaridade;
       if (!ano || ano < 1 || ano > 12) {
         setError("O ano de escolaridade deve ser entre 1 e 12.");
+        return false;
+      }
+    }
+
+    if (profileType === "profissional") {
+      if (!formData.funcao) {
+        setError("Por favor, selecione a sua função.");
         return false;
       }
     }
@@ -108,6 +136,7 @@ export default function RegisterFormPage() {
           .from("alunos")
           .insert({
             id: authData.user.id,
+            nome: formData.nome.trim(),
             email: formData.email,
             escola_instituicao: formData.escola_instituicao,
             ano_escolaridade: formData.ano_escolaridade,
@@ -123,8 +152,10 @@ export default function RegisterFormPage() {
           .from("profissionais")
           .insert({
             id: authData.user.id,
+            nome: formData.nome.trim(),
             email: formData.email,
             escola_instituicao: formData.escola_instituicao,
+            funcao: formData.funcao,
           });
 
         if (insertError) {
@@ -193,6 +224,23 @@ export default function RegisterFormPage() {
               )}
 
               <div className="space-y-2">
+                <Label htmlFor="nome">Nome</Label>
+                <Input
+                  id="nome"
+                  name="nome"
+                  type="text"
+                  placeholder="Primeiro e último nome"
+                  value={formData.nome}
+                  onChange={handleChange}
+                  required
+                  disabled={loading}
+                />
+                <p className="text-xs text-text-primary/50">
+                  Primeiro e Último nome
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
@@ -259,6 +307,27 @@ export default function RegisterFormPage() {
                 </div>
               )}
 
+              {profileType === "profissional" && (
+                <div className="space-y-2">
+                  <Label htmlFor="funcao">Função</Label>
+                  <Select
+                    value={formData.funcao || ""}
+                    onValueChange={handleSelectChange}
+                    disabled={loading}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione uma função" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Psicólogo(a)">Psicólogo(a)</SelectItem>
+                      <SelectItem value="Terapeuta da fala">Terapeuta da fala</SelectItem>
+                      <SelectItem value="Professor(a)">Professor(a)</SelectItem>
+                      <SelectItem value="Outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <Button
                 type="submit"
                 className="w-full bg-primary-yellow text-text-primary hover:bg-primary-yellow/90 font-semibold"
@@ -283,4 +352,3 @@ export default function RegisterFormPage() {
     </div>
   );
 }
-
