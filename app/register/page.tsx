@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/ui/Navbar";
 import { Sparkles, GraduationCap, Briefcase } from "lucide-react";
 import { ProfileType } from "@/types/auth";
 

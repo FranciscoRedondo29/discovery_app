@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/ui/Navbar";
 import { ArrowLeft } from "lucide-react";
 import { ProfileType, RegistrationFormData, FuncaoProfissional } from "@/types/auth";
 
@@ -168,7 +168,7 @@ export default function RegisterFormPage() {
       setSuccess(true);
       setTimeout(() => {
         router.push("/login?registered=true");
-      }, 2000);
+      }, 700);
     } catch (err) {
       setError("Ocorreu um erro inesperado. Por favor, tente novamente.");
       setLoading(false);

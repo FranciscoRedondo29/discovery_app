@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Mic, TrendingUp, Sparkles } from "lucide-react";
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/ui/Navbar";
 
 export default function Home() {
   return (

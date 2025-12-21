@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import type { User } from "@supabase/supabase-js";
 
@@ -39,6 +39,7 @@ export default function Navbar() {
 
   const isLoginPage = pathname === "/login";
   const isRegisterPage = pathname?.startsWith("/register");
+  const isAuthPage = isLoginPage || isRegisterPage;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
@@ -51,6 +52,20 @@ export default function Navbar() {
 
         {/* Navigation Buttons */}
         <div className="flex items-center gap-3">
+          {/* "Voltar ao início" button - visible on auth pages */}
+          {isAuthPage && (
+            <Link href="/">
+              <Button
+                variant="outline"
+                className="border-primary-yellow text-text-primary hover:bg-soft-yellow"
+                aria-label="Voltar à página inicial"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Voltar ao início</span>
+                <span className="sm:hidden">Início</span>
+              </Button>
+            </Link>
+          )}
           {!loading && (
             <>
               {user ? (
@@ -94,3 +109,4 @@ export default function Navbar() {
     </header>
   );
 }
+
