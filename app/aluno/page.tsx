@@ -4,13 +4,16 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Mic, LogOut, UserPlus } from "lucide-react";
+import { BookOpen, Mic, LogOut } from "lucide-react";
+import LinkByEmailInline from "@/components/linking/LinkByEmailInline";
 
 export default function AlunoPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [alunoName, setAlunoName] = useState("");
+  const [userId, setUserId] = useState("");
+  const [userEmail, setUserEmail] = useState("");
 
   useEffect(() => {
     async function checkAuth() {
@@ -42,6 +45,8 @@ export default function AlunoPage() {
 
         // User is authenticated and is an aluno
         setAlunoName(alunoData.nome);
+        setUserId(session.user.id);
+        setUserEmail(session.user.email || "");
         setLoading(false);
       } catch (err) {
         setError("Ocorreu um erro ao verificar a autenticação.");
@@ -61,11 +66,6 @@ export default function AlunoPage() {
     } catch (err) {
       setError("Erro ao terminar sessão.");
     }
-  };
-
-  const handleAddProfessional = () => {
-    // TODO: Implement add professional functionality
-    alert("Funcionalidade em desenvolvimento: Adicionar profissional responsável");
   };
 
   const handleLearn = () => {
@@ -109,8 +109,9 @@ export default function AlunoPage() {
     <div className="min-h-screen bg-soft-yellow flex flex-col">
       {/* Top Bar */}
       <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="container mx-auto max-w-7xl grid grid-cols-3 items-center gap-4">
-          <div className="flex justify-start">
+        <div className="container mx-auto max-w-7xl space-y-4">
+          {/* Header Row: Logout + Greeting */}
+          <div className="flex items-center justify-between">
             <Button
               onClick={handleLogout}
               variant="outline"
@@ -120,26 +121,23 @@ export default function AlunoPage() {
               <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
               Logout
             </Button>
-          </div>
-          
-          <div className="flex justify-center">
+
             <h1 className="text-xl font-bold text-text-primary">
               Olá, {alunoName}!
             </h1>
+
+            {/* Spacer for balance */}
+            <div className="w-[88px]" />
           </div>
 
-          <div className="flex justify-end">
-            <Button
-              onClick={handleAddProfessional}
-              variant="outline"
-              className="border-primary-yellow text-text-primary hover:bg-soft-yellow"
-              aria-label="Adicionar profissional responsável"
-            >
-              <UserPlus className="mr-2 h-4 w-4" aria-hidden="true" />
-              <span className="hidden sm:inline">Adicionar profissional responsável</span>
-              <span className="sm:hidden">Adicionar prof.</span>
-            </Button>
-          </div>
+          {/* Link by Email Component */}
+          <LinkByEmailInline
+            mode="aluno"
+            currentUserId={userId}
+            currentUserEmail={userEmail}
+            buttonLabelDesktop="Adicionar profissional responsável"
+            buttonLabelMobile="Adicionar prof."
+          />
         </div>
       </header>
 
