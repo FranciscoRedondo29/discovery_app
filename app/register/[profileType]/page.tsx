@@ -168,7 +168,7 @@ export default function RegisterFormPage() {
       setSuccess(true);
       setTimeout(() => {
         router.push("/login?registered=true");
-      }, 700);
+      }, 2000);
     } catch (err) {
       setError("Ocorreu um erro inesperado. Por favor, tente novamente.");
       setLoading(false);

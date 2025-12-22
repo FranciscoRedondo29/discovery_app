@@ -1,102 +1,161 @@
-# Discovery MVP - Landing Page
+## Discovery MVP
 
-An AI reading companion for dyslexic students built with Next.js 14+, Tailwind CSS, and Shadcn UI.
+An AI reading companion for dyslexic students, built with Next.js (App Router), Tailwind CSS, shadcn/ui, and Supabase authentication.
 
-## 🎨 Design System
+### Tech stack
 
-### Color Palette
+- **Framework**: Next.js 14 (App Router)
+- **UI**: React 18, TypeScript, Tailwind CSS, shadcn/ui (Radix primitives)
+- **Auth + DB**: Supabase (`@supabase/supabase-js`)
+- **Icons**: Lucide
 
-- **Primary Yellow**: `#EAB308` - Used for CTAs and interactive elements
-- **Soft Yellow**: `#FEFCE8` - Used for section backgrounds
-- **Text Primary**: `#1C1917` - Main text color (warm charcoal, never pure black)
+### Features and routes
 
-### Typography
+- **Landing page**: `/`
+- **Register (choose profile type)**: `/register`
+- **Register form**: `/register/aluno`, `/register/profissional`
+- **Login**: `/login`
+  - Shows a success banner when arriving from registration via `?registered=true`
+  - Redirects to `/aluno` or `/profissional` depending on the user profile table
+- **Aluno dashboard**: `/aluno` (requires an authenticated user present in the `alunos` table)
+- **Profissional dashboard**: `/profissional` (requires an authenticated user present in the `profissionais` table)
 
-- Font: Inter (system font stack)
-- Optimized spacing and readability for dyslexic users
+### Getting started
 
-## 🚀 Getting Started
+#### Prerequisites
 
-### Quick Start (3 minutes)
+- Node.js **18+**
+- npm **9+** (or a compatible npm version bundled with Node 18+)
+
+#### Install
 
 ```bash
 npm install
+```
+
+#### Run locally
+
+```bash
 npm run dev
 ```
 
-Then open [http://localhost:3000](http://localhost:3000) 🎉
+Open `http://localhost:3000`.
 
-### 📖 Complete Setup Guides
-
-- **[QUICK_START.md](./QUICK_START.md)** - TL;DR version (3 minutes)
-- **[SETUP.md](./SETUP.md)** - Full step-by-step guide with troubleshooting
-
-### Prerequisites
-
-- Node.js 18+ and npm installed
-- Verify: `node --version` should show v18.0.0+
-
-## 📁 Project Structure
-
-```
-MVP/
-├── app/
-│   ├── layout.tsx          # Root layout with metadata
-│   ├── page.tsx            # Main landing page
-│   └── globals.css         # Global styles with Tailwind
-├── components/
-│   └── ui/
-│       ├── button.tsx      # Shadcn Button component
-│       └── card.tsx        # Shadcn Card component
-├── lib/
-│   └── utils.ts            # Utility functions (cn helper)
-├── tailwind.config.ts      # Tailwind configuration with custom colors
-├── tsconfig.json           # TypeScript configuration
-└── package.json            # Project dependencies
-```
-
-## ✨ Features
-
-### Landing Page Sections
-
-1. **Navbar**: Sticky navigation with Login and Register buttons
-2. **Hero Section**: Eye-catching headline with CTA
-3. **Features Section**: Three key features (Learning, Practice, Evolution)
-4. **Benefits Section**: Additional value propositions
-5. **Footer**: Brand info and links
-
-### Accessibility
-
-- WCAG 2.1 AA compliant
-- High contrast ratios (4.5:1 minimum)
-- Semantic HTML structure
-- Optimized for screen readers
-- Keyboard navigation support
-
-## 🛠️ Tech Stack
-
-- **Framework**: Next.js 14+ (App Router)
-- **Styling**: Tailwind CSS
-- **Components**: Shadcn UI
-- **Icons**: Lucide React
-- **Language**: TypeScript
-- **Font**: Inter (Google Fonts)
-
-## 📦 Building for Production
+#### Scripts
 
 ```bash
+npm run dev
 npm run build
 npm start
+npm run lint
 ```
 
-## 🎯 Design Principles
+### Environment variables
 
-1. **Warm & Inviting**: Yellow tones create optimism
-2. **High Readability**: Clear typography and spacing
-3. **Accessibility First**: WCAG AA standards
-4. **Mobile Responsive**: Works on all devices
-5. **Performance**: Fast loading with Next.js optimizations
+Create a `.env.local` file in the project root:
 
-## 📝 License
+```bash
+NEXT_PUBLIC_SUPABASE_URL="https://YOUR_PROJECT.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
+```
 
-© 2024 Discovery. All rights reserved.
+Notes:
+- These values come from Supabase: Project Settings → API.
+- Do not commit `.env.local`.
+
+### Supabase setup (database + RLS)
+
+1. Create a Supabase project.
+2. Open Supabase Dashboard → SQL Editor.
+3. Run the SQL in `supabase-schema.sql`.
+
+This sets up:
+- Tables: `alunos`, `profissionais`
+- Constraints (including `ano_escolaridade` range and `funcao` allowed values)
+- Row Level Security (RLS) + policies so a user can insert/select/update their own row
+- Indexes on email columns
+- A migration section for adding `nome`/`funcao` if your tables already existed
+
+### Authentication flow (high-level)
+
+- **Register**:
+  - Creates a user with `supabase.auth.signUp()`
+  - Inserts profile data into either `alunos` or `profissionais`
+  - Redirects to `/login?registered=true` so the login page can show a success banner
+- **Login**:
+  - Signs in with `supabase.auth.signInWithPassword()`
+  - Determines the role by checking whether the user exists in `alunos` or `profissionais`
+  - Redirects to `/aluno` or `/profissional`
+- **Route protection**:
+  - `/aluno` and `/profissional` re-check the session and validate membership in the correct table to prevent direct URL access by unauthorized users
+
+Implementation note:
+- The `/login` route is wrapped in a React `<Suspense>` boundary because it uses `useSearchParams()` (required by Next.js App Router for build/prerender compatibility).
+
+### Design system
+
+#### Color palette
+
+- **Primary Yellow**: `#EAB308` (CTAs and interactive elements)
+- **Soft Yellow**: `#FEFCE8` (section backgrounds, subtle highlights)
+- **Text Primary**: `#1C1917` (warm charcoal; avoid pure black)
+
+#### Typography and accessibility
+
+- Font: Inter (via Next.js font setup)
+- Target: WCAG 2.1 AA friendly contrast and keyboard navigation
+
+### Project structure (simplified)
+
+```
+app/
+  page.tsx                      # landing
+  login/
+    page.tsx                    # Suspense wrapper
+    LoginClient.tsx             # login client component
+  register/
+    page.tsx                    # profile type selection
+    [profileType]/page.tsx      # aluno/profissional registration form
+  aluno/page.tsx                # aluno dashboard (guarded)
+  profissional/page.tsx         # profissional dashboard (guarded)
+components/ui/                  # shadcn/ui components + Navbar
+hooks/
+lib/
+supabase-schema.sql
+```
+
+### Troubleshooting
+
+- **`npm install` fails**:
+
+```bash
+npm cache clean --force
+npm install
+```
+
+- **Port 3000 already in use**:
+
+```bash
+npm run dev -- -p 3001
+```
+
+- **Styles not loading / weird UI after changes**:
+
+```bash
+rm -rf .next
+npm run dev
+```
+
+- **TypeScript/build issues**:
+  - Re-run `npm run build` and read the first TypeScript error.
+  - If you recently moved files, confirm imports still match your folder structure.
+
+### Optional docs
+
+The repository includes additional notes (some content overlaps with this README):
+- `QUICK_START.md`
+- `SETUP.md`
+- `AUTH_IMPLEMENTATION.md`
+- `REGISTRATION_SUMMARY.md`
+- `VERIFICATION_CHECKLIST.md`
+- `PROJECT_SUMMARY.md`
