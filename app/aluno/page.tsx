@@ -110,7 +110,7 @@ export default function AlunoPage() {
       {/* Top Bar */}
       <header className="bg-white border-b border-gray-200 px-4 py-4">
         <div className="container mx-auto max-w-7xl space-y-4">
-          {/* Header Row: Logout + Greeting */}
+          {/* Header Row: Logout + Greeting + Add Button */}
           <div className="flex items-center justify-between">
             <Button
               onClick={handleLogout}
@@ -126,18 +126,16 @@ export default function AlunoPage() {
               Olá, {alunoName}!
             </h1>
 
-            {/* Spacer for balance */}
-            <div className="w-[88px]" />
+            <div>
+              <LinkByEmailInline
+                mode="aluno"
+                currentUserId={userId}
+                currentUserEmail={userEmail}
+                buttonLabelDesktop="Adicionar profissional responsável"
+                buttonLabelMobile="Adicionar prof."
+              />
+            </div>
           </div>
-
-          {/* Link by Email Component */}
-          <LinkByEmailInline
-            mode="aluno"
-            currentUserId={userId}
-            currentUserEmail={userEmail}
-            buttonLabelDesktop="Adicionar profissional responsável"
-            buttonLabelMobile="Adicionar prof."
-          />
         </div>
       </header>
 

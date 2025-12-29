@@ -62,14 +62,8 @@ export default function LinkByEmailInline({
 
   return (
     <div className="space-y-3">
-      {/* User Email Display + Add Button */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex-1">
-          <p className="text-sm text-text-primary/70">
-            Email: <span className="font-medium text-text-primary">{currentUserEmail}</span>
-          </p>
-        </div>
-        
+      {/* Add Button only (user email removed per request) */}
+      <div className="flex items-center gap-3">
         <Button
           onClick={toggleForm}
           variant="outline"
