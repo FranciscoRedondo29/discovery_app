@@ -163,7 +163,7 @@ export default function ProfissionalPage() {
               Logout
             </Button>
 
-            <h1 className="text-xl font-bold text-text-primary">
+            <h1 className="text-2xl font-bold text-text-primary">
               Olá, {profissionalName}!
             </h1>
 
@@ -198,9 +198,19 @@ export default function ProfissionalPage() {
           ) : (
             // Students list
             <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-text-primary mb-6">
-                Os Meus Alunos
-              </h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-text-primary">Os Meus Alunos</h2>
+                  <div>
+                    <Button
+                      onClick={() => router.push("/profissional/geriralunos")}
+                      variant="outline"
+                      className="border-primary-yellow text-text-primary hover:bg-soft-yellow"
+                      aria-label="Gerir alunos"
+                    >
+                      Gerir alunos
+                    </Button>
+                  </div>
+                </div>
               <div className="grid gap-4">
                 {alunos.map((aluno) => (
                   <div

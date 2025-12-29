@@ -102,7 +102,7 @@ export default function LinkByEmailInline({
                 <div>
                   <Input
                     type="email"
-                    placeholder="Insert email"
+                    placeholder="Inserir email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={loading}
@@ -118,7 +118,7 @@ export default function LinkByEmailInline({
                     disabled={loading}
                     className="flex-1 bg-primary-yellow text-text-primary hover:bg-primary-yellow/90 font-semibold"
                   >
-                    {loading ? "A adicionar..." : "Add"}
+                    {loading ? "A adicionar..." : "Adicionar"}
                   </Button>
                   <Button
                     type="button"
@@ -127,7 +127,7 @@ export default function LinkByEmailInline({
                     disabled={loading}
                     className="flex-1 border-gray-300 text-text-primary hover:bg-gray-50"
                   >
-                    Cancel
+                    Cancelar
                   </Button>
                 </div>
               </>

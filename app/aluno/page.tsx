@@ -122,7 +122,7 @@ export default function AlunoPage() {
               Logout
             </Button>
 
-            <h1 className="text-xl font-bold text-text-primary">
+            <h1 className="text-2xl font-bold text-text-primary">
               Olá, {alunoName}!
             </h1>
 
@@ -187,6 +187,16 @@ export default function AlunoPage() {
         <div className="container mx-auto max-w-7xl">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-text-primary">Tarefas</h3>
+            <div>
+              <Button
+                onClick={() => router.push("/aluno/gerirprofissionais")}
+                variant="outline"
+                className="border-primary-yellow text-text-primary hover:bg-soft-yellow"
+                aria-label="Gerir profissionais"
+              >
+                Gerir profissionais
+              </Button>
+            </div>
           </div>
           <div className="text-text-primary/50 text-center py-8">
             <p>Nenhuma tarefa atribuída ainda.</p>
