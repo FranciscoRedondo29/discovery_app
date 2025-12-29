@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Mic, TrendingUp, Sparkles } from "lucide-react";
@@ -26,13 +27,15 @@ export default function Home() {
                 </div>
 
                 <div className="flex flex-col gap-4 sm:flex-row sm:gap-4">
-                  <Button 
-                    size="xl" 
-                    className="bg-primary-yellow text-text-primary hover:bg-primary-yellow/90 font-semibold shadow-lg hover:shadow-xl transition-all"
-                    aria-label="Começar a usar Discovery gratuitamente"
-                  >
-                    Experimentar Gratuitamente
-                  </Button>
+                  <Link href="/register">
+                    <Button 
+                      size="xl" 
+                      className="bg-primary-yellow text-text-primary hover:bg-primary-yellow/90 font-semibold shadow-lg hover:shadow-xl transition-all"
+                      aria-label="Começar a usar Discovery gratuitamente"
+                    >
+                      Experimentar Gratuitamente
+                    </Button>
+                  </Link>
                 </div>
 
                 {/* Social Proof / Trust Indicator */}
@@ -137,13 +140,15 @@ export default function Home() {
 
             {/* Secondary CTA */}
             <div className="mt-16 text-center">
-              <Button 
-                size="lg" 
-                className="bg-primary-yellow text-text-primary hover:bg-primary-yellow/90 font-semibold"
-                aria-label="Começar agora"
-              >
-                Começar Agora
-              </Button>
+              <Link href="/register">
+                <Button 
+                  size="lg" 
+                  className="bg-primary-yellow text-text-primary hover:bg-primary-yellow/90 font-semibold"
+                  aria-label="Começar agora"
+                >
+                  Começar Agora
+                </Button>
+              </Link>
             </div>
           </div>
         </section>
