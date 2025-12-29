@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
-import { LogOut, Eye, CheckSquare, Inbox } from "lucide-react";
+import { LogOut, Eye, CheckSquare } from "lucide-react";
 import LinkByEmailInline from "@/components/linking/LinkByEmailInline";
+import InboxButton from "@/components/InboxButton";
 
 interface Aluno {
   id: string;
@@ -165,9 +166,7 @@ export default function ProfissionalPage() {
                   Logout
                 </Button>
 
-                <Button variant="ghost" className="text-text-primary hover:bg-gray-50" aria-label="Inbox" onClick={() => router.push("/profissional/pedidos")}>
-                  <Inbox className="h-4 w-4" />
-                </Button>
+                <InboxButton userId={userId} onClick={() => router.push("/profissional/pedidos")} />
               </div>
 
               <div className="text-center">
