@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Mic, LogOut } from "lucide-react";
+import { BookOpen, Mic, LogOut, Inbox } from "lucide-react";
 import LinkByEmailInline from "@/components/linking/LinkByEmailInline";
 
 export default function AlunoPage() {
@@ -14,6 +14,7 @@ export default function AlunoPage() {
   const [alunoName, setAlunoName] = useState("");
   const [userId, setUserId] = useState("");
   const [userEmail, setUserEmail] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
     async function checkAuth() {
@@ -109,30 +110,52 @@ export default function AlunoPage() {
     <div className="min-h-screen bg-soft-yellow flex flex-col">
       {/* Top Bar */}
       <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="container mx-auto max-w-7xl space-y-4">
-          {/* Header Row: Logout + Greeting + Add Button */}
-          <div className="flex items-center justify-between">
-            <Button
-              onClick={handleLogout}
-              variant="outline"
-              className="border-primary-yellow text-text-primary hover:bg-soft-yellow"
-              aria-label="Terminar sessão"
-            >
-              <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
-              Logout
-            </Button>
+        <div className="container mx-auto max-w-7xl">
+          <div>
+            <div className="grid grid-cols-3 items-center">
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={handleLogout}
+                  variant="outline"
+                  className="border-primary-yellow text-text-primary hover:bg-soft-yellow"
+                  aria-label="Terminar sessão"
+                >
+                  <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
+                  Logout
+                </Button>
 
-            <h1 className="text-2xl font-bold text-text-primary">
-              Olá, {alunoName}!
-            </h1>
+                <Button variant="ghost" className="text-text-primary hover:bg-gray-50" aria-label="Inbox" onClick={() => router.push("/aluno/pedidos")}>
+                  <Inbox className="h-4 w-4" />
+                </Button>
+              </div>
 
-            <div>
+              <div className="text-center">
+                <h1 className="text-2xl font-bold text-text-primary">Olá, {alunoName}!</h1>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => setShowAddForm((s) => !s)}
+                  variant="outline"
+                  className="border-primary-yellow text-text-primary hover:bg-soft-yellow"
+                  aria-label="Adicionar profissional"
+                >
+                  Adicionar profissional
+                </Button>
+              </div>
+            </div>
+
+            {/* Full-width form area under header row */}
+            <div className="mt-4 w-full">
               <LinkByEmailInline
                 mode="aluno"
                 currentUserId={userId}
                 currentUserEmail={userEmail}
                 buttonLabelDesktop="Adicionar profissional responsável"
                 buttonLabelMobile="Adicionar prof."
+                hideToggleButton
+                showForm={showAddForm}
+                onToggle={() => setShowAddForm((s) => !s)}
               />
             </div>
           </div>

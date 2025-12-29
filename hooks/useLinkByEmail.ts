@@ -49,89 +49,26 @@ export function useLinkByEmail({ mode, currentUserId }: UseLinkByEmailProps): Li
         return;
       }
 
-      if (mode === "aluno") {
-        // Aluno adding a profissional
-        // 1. Look up profissional by email using secure RPC
-        const { data: profissionalId, error: lookupError } = await supabase
-          .rpc("lookup_profissional_id_by_email", { email_input: trimmedEmail });
+      // Call RPC to create pending request
+      const { data, error: rpcError } = await supabase.rpc("criar_pedido", {
+        destinatario_email: trimmedEmail,
+        tipo_solicitante: mode,
+      });
 
-        if (lookupError) {
-          // RPC function error (e.g., authentication issue)
-          setError("Erro ao procurar profissional. Tente novamente.");
-          setLoading(false);
-          return;
-        }
-
-        if (!profissionalId) {
-          // Email not found in profissionais table
-          setError("Profissional não encontrado com este email.");
-          setLoading(false);
-          return;
-        }
-
-        // 2. Insert into join table
-        const { error: insertError } = await supabase
-          .from("aluno_profissionais")
-          .insert({
-            aluno_id: currentUserId,
-            profissional_id: profissionalId,
-          });
-
-        if (insertError) {
-          // Check for duplicate constraint violation (PostgreSQL error code 23505)
-          if (insertError.code === "23505") {
-            setError("Este profissional já está adicionado.");
-          } else {
-            setError("Erro ao adicionar profissional. Tente novamente.");
-          }
-          setLoading(false);
-          return;
-        }
-
-        setSuccess(true);
+      if (rpcError) {
+        setError("Erro ao enviar pedido. Tente novamente.");
         setLoading(false);
-      } else {
-        // Profissional adding an aluno
-        // 1. Look up aluno by email using secure RPC
-        const { data: alunoId, error: lookupError } = await supabase
-          .rpc("lookup_aluno_id_by_email", { email_input: trimmedEmail });
-
-        if (lookupError) {
-          // RPC function error (e.g., authentication issue)
-          setError("Erro ao procurar aluno. Tente novamente.");
-          setLoading(false);
-          return;
-        }
-
-        if (!alunoId) {
-          // Email not found in alunos table
-          setError("Aluno não encontrado com este email.");
-          setLoading(false);
-          return;
-        }
-
-        // 2. Insert into join table
-        const { error: insertError } = await supabase
-          .from("aluno_profissionais")
-          .insert({
-            aluno_id: alunoId,
-            profissional_id: currentUserId,
-          });
-
-        if (insertError) {
-          // Check for duplicate constraint violation
-          if (insertError.code === "23505") {
-            setError("Este aluno já está adicionado.");
-          } else {
-            setError("Erro ao adicionar aluno. Tente novamente.");
-          }
-          setLoading(false);
-          return;
-        }
-
-        setSuccess(true);
-        setLoading(false);
+        return;
       }
+
+      if (!data || !data.success) {
+        setError(data?.message || "Erro ao enviar pedido.");
+        setLoading(false);
+        return;
+      }
+
+      setSuccess(true);
+      setLoading(false);
     } catch (err) {
       setError("Ocorreu um erro inesperado. Tente novamente.");
       setLoading(false);
