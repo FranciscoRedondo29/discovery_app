@@ -19,8 +19,8 @@ import {
   HeartCrack,
   HandHelping
 } from 'lucide-react';
-import { Navbar } from '@/components/navbar';
-import { Hero } from '@/components/hero';
+import { Navbar } from '../components/navbar';
+import { Hero } from '../components/hero';
 import { ContactSection } from './contactsection';
 import { useEffect, useRef, useState } from 'react';
 

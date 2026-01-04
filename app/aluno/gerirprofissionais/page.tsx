@@ -175,7 +175,7 @@ export default function GerirProfissionaisPage() {
                       <div className="text-sm text-text-primary/70">{p.email} • {p.funcao}</div>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" className="border-red-200 text-red-600" onClick={() => handleRemove(p.id)}>
+                      <Button className="hover:bg-primary-yellow/90 hover:text-text-primary text-primary-yellow border border-primary-yellow bg-transparent" onClick={() => handleRemove(p.id)}>
                         <Trash2 className="mr-2 h-4 w-4" />Remover
                       </Button>
                     </div>
