@@ -9,7 +9,7 @@ interface UseSyllableAudioReturn {
   reset: () => void;
 }
 
-const STORAGE_PREFIX = 'syllib_';
+const STORAGE_PREFIX = 'syllib_v2_'; // v2 for eleven_turbo_v2_5 model
 const ELEVENLABS_VOICE_ID = 'pNInz6obpgDQGcFmaJgB'; // Adam voice - adjust as needed
 
 /**
@@ -29,17 +29,25 @@ export function useSyllableAudio(
   const abortControllerRef = useRef<AbortController | null>(null);
   const playbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Debug: Check API key on mount
+  useEffect(() => {
+    const apiKey = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY;
+    if (apiKey) {
+      console.log('[useSyllableAudio] API key found:', apiKey.substring(0, 4) + '...');
+    } else {
+      console.error('[useSyllableAudio] ⚠️ API key is NOT defined! Check your .env.local file.');
+    }
+  }, []);
+
   // Initialize AudioContext
   useEffect(() => {
     if (typeof window !== 'undefined' && !audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      console.log('[useSyllableAudio] AudioContext initialized');
     }
 
-    return () => {
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-    };
+    // Don't close AudioContext in cleanup - let it stay open
+    // Closing and reopening AudioContext can cause issues
   }, []);
 
   /**
@@ -62,7 +70,7 @@ export function useSyllableAudio(
     try {
       localStorage.setItem(key, base64Audio);
     } catch (error) {
-      console.warn('Failed to cache audio:', error);
+      console.warn('[useSyllableAudio] Failed to cache audio:', error);
       // If storage is full, clear old entries
       if (error instanceof DOMException && error.name === 'QuotaExceededError') {
         // Clear oldest entries
@@ -73,7 +81,7 @@ export function useSyllableAudio(
           try {
             localStorage.setItem(key, base64Audio);
           } catch {
-            console.error('Still cannot cache after clearing');
+            console.error('[useSyllableAudio] Still cannot cache after clearing');
           }
         }
       }
@@ -87,37 +95,60 @@ export function useSyllableAudio(
     const apiKey = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY;
     
     if (!apiKey) {
+      console.error('[useSyllableAudio] ⚠️ API key not found in environment variables');
       throw new Error('ElevenLabs API key not configured');
     }
 
     const url = `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`;
     
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Accept': 'audio/mpeg',
-        'Content-Type': 'application/json',
-        'xi-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        text: syllable,
-        model_id: 'eleven_monolingual_v1',
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
+    console.log('[useSyllableAudio] Fetching audio for syllable:', syllable);
+    console.log('[useSyllableAudio] API URL:', url);
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Accept': 'audio/mpeg',
+          'Content-Type': 'application/json',
+          'xi-api-key': apiKey,
         },
-      }),
-    });
+        body: JSON.stringify({
+          text: syllable,
+          model_id: 'eleven_turbo_v2_5',
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+          },
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error(`ElevenLabs API error: ${response.status}`);
+      console.log('[useSyllableAudio] Response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        // Try to get error details from response
+        let errorDetails;
+        try {
+          errorDetails = await response.json();
+          console.error('[useSyllableAudio] API error details:', errorDetails);
+        } catch {
+          errorDetails = await response.text();
+          console.error('[useSyllableAudio] API error (text):', errorDetails);
+        }
+        throw new Error(`ElevenLabs API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorDetails)}`);
+      }
+
+      const audioBlob = await response.blob();
+      console.log('[useSyllableAudio] Audio blob size:', audioBlob.size, 'bytes');
+      
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      
+      console.log('[useSyllableAudio] ✓ Audio fetched and encoded successfully');
+      return base64;
+    } catch (error) {
+      console.error('[useSyllableAudio] Fetch error:', error);
+      throw error;
     }
-
-    const audioBlob = await response.blob();
-    const arrayBuffer = await audioBlob.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString('base64');
-    
-    return base64;
   }, []);
 
   /**
@@ -127,9 +158,11 @@ export function useSyllableAudio(
     // Check cache first
     const cached = getCachedAudio(syllable);
     if (cached) {
+      console.log('[useSyllableAudio] Using cached audio for:', syllable);
       return cached;
     }
 
+    console.log('[useSyllableAudio] Cache miss, fetching from API for:', syllable);
     // Fetch from API
     const base64Audio = await fetchAudioFromAPI(syllable);
     
@@ -151,6 +184,7 @@ export function useSyllableAudio(
     setCurrentSyllableIndex(index);
 
     try {
+      console.log('[useSyllableAudio] Playing syllable:', syllable, 'at index:', index);
       const base64Audio = await getAudio(syllable);
       
       // Decode base64 to ArrayBuffer
@@ -160,8 +194,12 @@ export function useSyllableAudio(
         bytes[i] = binaryString.charCodeAt(i);
       }
       
+      console.log('[useSyllableAudio] Decoding audio buffer...');
       // Decode audio data
       const audioBuffer = await audioContext.decodeAudioData(bytes.buffer);
+      console.log('[useSyllableAudio] Audio buffer decoded, duration:', audioBuffer.duration, 'seconds');
+      console.log('[useSyllableAudio] AudioContext state before playing:', audioContext.state);
+      console.log('[useSyllableAudio] AudioContext destination:', audioContext.destination);
       
       // Create audio source
       const source = audioContext.createBufferSource();
@@ -172,16 +210,20 @@ export function useSyllableAudio(
       
       // Connect to output
       source.connect(audioContext.destination);
+      console.log('[useSyllableAudio] Source connected to destination');
       
       // Play and wait for completion
       return new Promise((resolve) => {
         source.onended = () => {
+          console.log('[useSyllableAudio] Syllable playback ended:', syllable);
           resolve();
         };
+        console.log('[usySyllableAudio] About to call source.start(0)...');
         source.start(0);
+        console.log('[useSyllableAudio] source.start(0) called, syllable playback started:', syllable);
       });
     } catch (error) {
-      console.error(`Error playing syllable "${syllable}":`, error);
+      console.error(`[useSyllableAudio] Error playing syllable "${syllable}":`, error);
       throw error;
     }
   }, [getAudio, speed]);
@@ -190,7 +232,12 @@ export function useSyllableAudio(
    * Play all syllables in sequence
    */
   const play = useCallback(async () => {
-    if (isPlaying || syllables.length === 0) return;
+    if (isPlaying || syllables.length === 0) {
+      console.log('[useSyllableAudio] Cannot play: isPlaying=', isPlaying, 'syllables.length=', syllables.length);
+      return;
+    }
+    
+    console.log('[useSyllableAudio] Starting playback of', syllables.length, 'syllables');
     
     // Abort any previous playback
     if (abortControllerRef.current) {
@@ -210,9 +257,22 @@ export function useSyllableAudio(
         throw new Error('AudioContext not initialized');
       }
 
+      // If AudioContext is closed, recreate it
+      if (audioContext.state === 'closed') {
+        console.log('[useSyllableAudio] AudioContext is closed, recreating...');
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        console.log('[useSyllableAudio] New AudioContext created');
+      }
+
+      const activeContext = audioContextRef.current;
+
       // Resume AudioContext if suspended (browser autoplay policy)
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
+      if (activeContext.state === 'suspended') {
+        console.log('[useSyllableAudio] Resuming suspended AudioContext...');
+        await activeContext.resume();
+        console.log('[useSyllableAudio] AudioContext state after resume:', activeContext.state);
+      } else {
+        console.log('[useSyllableAudio] AudioContext state:', activeContext.state);
       }
 
       setIsLoading(false);
@@ -220,10 +280,11 @@ export function useSyllableAudio(
       // Play each syllable
       for (let i = 0; i < syllables.length; i++) {
         if (signal.aborted) {
+          console.log('[useSyllableAudio] Playback aborted at index', i);
           break;
         }
 
-        await playSyllable(syllables[i], i, audioContext);
+        await playSyllable(syllables[i], i, activeContext);
         
         // Small pause between syllables (adjusted by speed)
         if (i < syllables.length - 1 && !signal.aborted) {
@@ -235,12 +296,14 @@ export function useSyllableAudio(
 
       // Playback complete
       if (!signal.aborted) {
+        console.log('[useSyllableAudio] ✓ Playback completed successfully');
         setCurrentSyllableIndex(-1);
       }
     } catch (error) {
       if (error instanceof Error && error.name !== 'AbortError') {
-        console.error('Playback error:', error);
+        console.error('[useSyllableAudio] Playback error:', error);
       }
+      setIsLoading(false);
     } finally {
       setIsPlaying(false);
       setIsLoading(false);
@@ -252,6 +315,8 @@ export function useSyllableAudio(
    * Pause playback
    */
   const pause = useCallback(() => {
+    console.log('[useSyllableAudio] Pausing playback');
+    console.trace('[useSyllableAudio] Pause called from:'); // Add stack trace
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -270,6 +335,7 @@ export function useSyllableAudio(
    * Reset to beginning
    */
   const reset = useCallback(() => {
+    console.log('[useSyllableAudio] Resetting playback');
     pause();
     setCurrentSyllableIndex(-1);
   }, [pause]);

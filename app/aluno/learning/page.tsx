@@ -83,10 +83,15 @@ export default function LearningPage() {
   }
 
   const handlePlayPause = () => {
+    console.log('[handlePlayPause] isPlaying:', isPlaying, 'isLoading:', isLoading);
+    
     if (isPlaying) {
       pause();
     } else {
-      play();
+      // Only play if not already loading/playing
+      if (!isLoading) {
+        play();
+      }
     }
   };
 
