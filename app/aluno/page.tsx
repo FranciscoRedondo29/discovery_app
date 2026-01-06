@@ -75,8 +75,7 @@ export default function AlunoPage() {
   };
 
   const handlePractice = () => {
-    // TODO: Implement practice mode navigation
-    alert("Funcionalidade em desenvolvimento: Modo Praticar");
+    router.push("/aluno/practice");
   };
 
   // Loading state

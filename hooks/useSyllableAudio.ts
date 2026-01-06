@@ -9,8 +9,8 @@ interface UseSyllableAudioReturn {
   reset: () => void;
 }
 
-const STORAGE_PREFIX = 'syllib_v2_'; // v2 for eleven_turbo_v2_5 model
-const ELEVENLABS_VOICE_ID = 'pNInz6obpgDQGcFmaJgB'; // Adam voice - adjust as needed
+const STORAGE_PREFIX = 'eleven_multilingual_v2'; // v2 for eleven_turbo_v2_5 model
+const ELEVENLABS_VOICE_ID = 'NndrHq4eUijN4wsQVtzW'; // Adam voice - adjust as needed
 
 /**
  * Custom hook for syllable-by-syllable audio playback with caching

@@ -1,0 +1,386 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Play, Check, SkipForward, Volume2, Loader2 } from "lucide-react";
+import { useDictationAudio } from "@/hooks/useDictationAudio";
+import { DictationEvaluator, type DictationResult } from "@/lib/logic/DictationEvaluator";
+import { getRandomExercise } from "@/lib/exercises";
+import type { Exercise } from "@/types/exercises";
+
+type Status = "listening" | "evaluating" | "completed";
+
+export default function DictationPage() {
+  const router = useRouter();
+
+  // State management
+  const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
+  const [userInput, setUserInput] = useState("");
+  const [result, setResult] = useState<DictationResult | null>(null);
+  const [status, setStatus] = useState<Status>("listening");
+  const [isLoadingExercise, setIsLoadingExercise] = useState(true);
+  const [error, setError] = useState("");
+
+  // Audio hook
+  const { play, isPlaying, isLoading: audioLoading, stop } = useDictationAudio();
+
+  // Load exercise on mount
+  useEffect(() => {
+    loadNewExercise();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function loadNewExercise() {
+    setIsLoadingExercise(true);
+    setError("");
+    setUserInput("");
+    setResult(null);
+    setStatus("listening");
+    
+    // Only stop if audio is actually playing
+    if (isPlaying) {
+      stop();
+    }
+
+    try {
+      const exercise = await getRandomExercise("medium");
+      if (exercise) {
+        setCurrentExercise(exercise);
+      } else {
+        setError("Nenhum exercício disponível");
+      }
+    } catch (err) {
+      console.error("Error loading exercise:", err);
+      setError("Erro ao carregar exercício");
+    } finally {
+      setIsLoadingExercise(false);
+    }
+  }
+
+  const handlePlayAudio = async () => {
+    if (!currentExercise) return;
+
+    try {
+      await play(currentExercise.content);
+    } catch (err) {
+      console.error("Error playing audio:", err);
+      setError("Erro ao reproduzir áudio");
+    }
+  };
+
+  const handleEvaluate = () => {
+    if (!currentExercise || !userInput.trim()) return;
+
+    setStatus("evaluating");
+
+    try {
+      const evaluationResult = DictationEvaluator.evaluate(
+        currentExercise.content,
+        userInput
+      );
+      setResult(evaluationResult);
+      setStatus("completed");
+    } catch (err) {
+      console.error("Error evaluating:", err);
+      setError("Erro ao avaliar o ditado");
+      setStatus("listening");
+    }
+  };
+
+  const handleNextExercise = () => {
+    loadNewExercise();
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 90) return "text-green-600";
+    if (score >= 70) return "text-yellow-600";
+    return "text-orange-600";
+  };
+
+  const getScoreBgColor = (score: number) => {
+    if (score >= 90) return "bg-green-50 border-green-200";
+    if (score >= 70) return "bg-yellow-50 border-yellow-200";
+    return "bg-orange-50 border-orange-200";
+  };
+
+  if (isLoadingExercise) {
+    return (
+      <div className="min-h-screen bg-soft-yellow flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-yellow mx-auto"></div>
+          <p className="text-text-primary/70">A carregar exercício...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-soft-yellow flex flex-col">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 px-4 py-4">
+        <div className="container mx-auto max-w-7xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                onClick={() => router.push("/aluno")}
+                variant="ghost"
+                size="sm"
+                aria-label="Voltar ao dashboard"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar
+              </Button>
+              <h1 className="text-2xl font-bold text-text-primary">
+                Ditado
+              </h1>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 container mx-auto max-w-4xl px-4 py-8">
+        <div className="space-y-6">
+          {/* Error Display */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
+
+          {/* Audio Section */}
+          <Card className="border-2 border-gray-200">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Volume2 className="h-5 w-5 text-primary-yellow" />
+                Ouvir Frase
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={handlePlayAudio}
+                disabled={isLoadingExercise || audioLoading || !currentExercise || status === "completed"}
+                size="lg"
+                className="w-full bg-primary-yellow text-text-primary hover:bg-primary-yellow/90 font-semibold py-8 text-xl"
+              >
+                {audioLoading ? (
+                  <>
+                    <Loader2 className="h-6 w-6 mr-3 animate-spin" />
+                    A preparar...
+                  </>
+                ) : isPlaying ? (
+                  <>
+                    <Volume2 className="h-6 w-6 mr-3" />
+                    A reproduzir...
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-6 w-6 mr-3" />
+                    Reproduzir Áudio
+                  </>
+                )}
+              </Button>
+              <p className="text-center text-sm text-text-primary/60 mt-4">
+                Clica para ouvir a frase. Podes ouvir quantas vezes quiseres.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Input or Result Section */}
+          {status === "completed" && result ? (
+            /* Result View */
+            <Card className="border-2 border-primary-yellow/30">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Resultado</CardTitle>
+                  <div
+                    className={`px-4 py-2 rounded-lg border-2 ${getScoreBgColor(
+                      result.accuracyPercentage
+                    )}`}
+                  >
+                    <span
+                      className={`text-2xl font-bold ${getScoreColor(
+                        result.accuracyPercentage
+                      )}`}
+                    >
+                      {result.accuracyPercentage}%
+                    </span>
+                    <span className="text-sm text-text-primary/70 ml-2">
+                      Acerto
+                    </span>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Diff Display */}
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <h3 className="text-sm font-semibold text-text-primary mb-3">
+                    Comparação:
+                  </h3>
+                  <div className="text-2xl leading-relaxed" style={{ fontFamily: "OpenDyslexic, Arial, sans-serif" }}>
+                    {result.diff.map((item, index) => {
+                      if (item.type === "correct") {
+                        return (
+                          <span
+                            key={index}
+                            className="inline-block mx-1 px-2 py-1 bg-green-100 text-green-800 rounded-md"
+                            title="Correto"
+                          >
+                            {item.value}
+                          </span>
+                        );
+                      } else if (item.type === "substitution") {
+                        return (
+                          <span
+                            key={index}
+                            className="inline-block mx-1 px-2 py-1 bg-red-100 text-red-800 rounded-md"
+                            title={`Erro: deveria ser "${item.expected}"`}
+                          >
+                            {item.value}
+                          </span>
+                        );
+                      } else if (item.type === "omission") {
+                        return (
+                          <span
+                            key={index}
+                            className="inline-block mx-1 px-2 py-1 bg-red-100 text-red-800 rounded-md line-through"
+                            title="Palavra em falta"
+                          >
+                            {item.expected}
+                          </span>
+                        );
+                      } else if (item.type === "insertion") {
+                        return (
+                          <span
+                            key={index}
+                            className="inline-block mx-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-md"
+                            title="Palavra extra"
+                          >
+                            {item.value}
+                          </span>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div className="flex flex-wrap gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
+                    <span className="text-text-primary/70">Correto</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
+                    <span className="text-text-primary/70">Erro / Em falta</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded"></div>
+                    <span className="text-text-primary/70">Palavra extra</span>
+                  </div>
+                </div>
+
+                {/* Statistics */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-green-600">
+                      {result.correctWords}
+                    </p>
+                    <p className="text-xs text-text-primary/60">Corretas</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-red-600">
+                      {result.substitutionErrors}
+                    </p>
+                    <p className="text-xs text-text-primary/60">Erros</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-red-600">
+                      {result.omissionErrors}
+                    </p>
+                    <p className="text-xs text-text-primary/60">Em falta</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-yellow-600">
+                      {result.insertionErrors}
+                    </p>
+                    <p className="text-xs text-text-primary/60">Extras</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            /* Input View */
+            <Card className="border-2 border-gray-200">
+              <CardHeader>
+                <CardTitle className="text-lg">Escreve o que ouviste</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Textarea
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  placeholder="Escreve aqui o que ouviste..."
+                  disabled={status === "evaluating"}
+                  className="min-h-[200px] text-xl resize-none"
+                  style={{ fontFamily: "OpenDyslexic, Arial, sans-serif" }}
+                />
+                <p className="text-sm text-text-primary/60">
+                  Escreve a frase completa que ouviste. Depois clica em "Corrigir".
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            {status === "completed" ? (
+              <Button
+                onClick={handleNextExercise}
+                size="lg"
+                className="bg-primary-yellow text-text-primary hover:bg-primary-yellow/90 font-semibold min-w-[250px]"
+              >
+                <SkipForward className="h-5 w-5 mr-2" />
+                Próximo Exercício
+              </Button>
+            ) : (
+              <Button
+                onClick={handleEvaluate}
+                disabled={
+                  !userInput.trim() ||
+                  status === "evaluating" ||
+                  isLoadingExercise
+                }
+                size="lg"
+                className="bg-primary-yellow text-text-primary hover:bg-primary-yellow/90 font-semibold min-w-[250px]"
+              >
+                {status === "evaluating" ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    A avaliar...
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-5 w-5 mr-2" />
+                    Corrigir
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+
+          {/* Help Text */}
+          <div className="text-center text-sm text-text-primary/60 space-y-1">
+            <p>
+              <strong>Dica:</strong> Ouve com atenção e escreve exatamente o que ouves.
+            </p>
+            <p>Não te preocupes com maiúsculas ou pontuação!</p>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
