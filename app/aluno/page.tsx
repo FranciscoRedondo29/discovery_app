@@ -71,13 +71,11 @@ export default function AlunoPage() {
   };
 
   const handleLearn = () => {
-    // TODO: Implement learn mode navigation
-    alert("Funcionalidade em desenvolvimento: Modo Aprender");
+    router.push("/aluno/learning");
   };
 
   const handlePractice = () => {
-    // TODO: Implement practice mode navigation
-    alert("Funcionalidade em desenvolvimento: Modo Praticar");
+    router.push("/aluno/practice");
   };
 
   // Loading state
