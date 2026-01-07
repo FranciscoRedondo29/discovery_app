@@ -11,17 +11,6 @@ export interface Exercise {
 }
 
 /**
- * Phrase interface for Learning Mode
- * Represents a phrase with syllable division
- */
-export interface Phrase {
-  id: number;
-  level: 'easy' | 'medium' | 'hard';
-  text: string;
-  syllables: string;
-}
-
-/**
  * Difficulty level types
  */
 export type DifficultyEN = 'easy' | 'medium' | 'hard';

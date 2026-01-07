@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Play, Check, SkipForward, Volume2, Loader2 } from "lucide-react";
-import { useDictationAudio } from "@/hooks/useDictationAudio";
+import { ArrowLeft, Play, Check, SkipForward, Volume2, Loader2, Pause } from "lucide-react";
+// TODO: reativar TTS quando necessário
+// import { useDictationAudio } from "@/hooks/useDictationAudio";
 import { DictationEvaluator, type DictationResult } from "@/lib/logic/DictationEvaluator";
 import { DictationFeedback } from "@/components/practice/DictationFeedback";
 import { getRandomExercise, insertDictationMetrics } from "@/lib/exercises";
@@ -39,15 +40,38 @@ function DictationPageContent() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyPT>(getDifficultyFromURL());
   const [metricsSaved, setMetricsSaved] = useState(false);
   const [seenExerciseIds, setSeenExerciseIds] = useState<string[]>([]);
+  
+  // Local audio playback state
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Audio hook
-  const { play, isPlaying, isLoading: audioLoading, stop } = useDictationAudio();
+  // TODO: reativar TTS quando necessário
+  // const { play, isPlaying, isLoading: audioLoading, stop } = useDictationAudio();
 
   // Load exercise on mount and when difficulty changes
   useEffect(() => {
     loadNewExercise();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDifficulty]);
+
+  // Apply playback speed when it changes
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackSpeed;
+    }
+  }, [playbackSpeed]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   async function loadNewExercise() {
     setIsLoadingExercise(true);
@@ -56,10 +80,13 @@ function DictationPageContent() {
     setResult(null);
     setStatus("listening");
     setMetricsSaved(false);
+    setAudioError(null);
     
-    // Only stop if audio is actually playing
-    if (isPlaying) {
-      stop();
+    // Stop audio if playing
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
     }
 
     try {
@@ -84,10 +111,52 @@ function DictationPageContent() {
     if (!currentExercise) return;
 
     try {
-      await play(currentExercise.content);
+      setAudioError(null);
+      
+      // Stop current audio if playing
+      if (audioRef.current && isPlaying) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        setIsPlaying(false);
+        return;
+      }
+
+      // Build audio path from exercise content
+      // Trim whitespace and newlines from content
+      const cleanContent = currentExercise.content.trim();
+      const audioSrc = `/audios/${cleanContent}.m4a`;
+      
+      console.log('[Dictation] Audio path:', audioSrc);
+      console.log('[Dictation] Exercise content cleaned:', cleanContent);
+      
+      // Create or reuse audio element
+      if (!audioRef.current) {
+        audioRef.current = new Audio(audioSrc);
+      } else {
+        audioRef.current.src = audioSrc;
+      }
+
+      // Apply playback speed
+      audioRef.current.playbackRate = playbackSpeed;
+
+      // Set up event listeners
+      audioRef.current.onended = () => {
+        setIsPlaying(false);
+      };
+
+      audioRef.current.onerror = (e) => {
+        console.error("Audio playback error:", e);
+        setAudioError("Áudio não disponível para este exercício");
+        setIsPlaying(false);
+      };
+
+      // Play audio
+      await audioRef.current.play();
+      setIsPlaying(true);
     } catch (err) {
       console.error("Error playing audio:", err);
-      setError("Erro ao reproduzir áudio");
+      setAudioError("Erro ao reproduzir áudio");
+      setIsPlaying(false);
     }
   };
 
@@ -271,22 +340,17 @@ function DictationPageContent() {
                 )}
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <Button
                 onClick={handlePlayAudio}
-                disabled={isLoadingExercise || audioLoading || !currentExercise || status === "completed"}
+                disabled={isLoadingExercise || !currentExercise || status === "completed"}
                 size="lg"
                 className="w-full bg-primary-yellow text-text-primary hover:bg-primary-yellow/90 font-semibold py-8 text-xl"
               >
-                {audioLoading ? (
+                {isPlaying ? (
                   <>
-                    <Loader2 className="h-6 w-6 mr-3 animate-spin" />
-                    A preparar...
-                  </>
-                ) : isPlaying ? (
-                  <>
-                    <Volume2 className="h-6 w-6 mr-3" />
-                    A reproduzir...
+                    <Pause className="h-6 w-6 mr-3" />
+                    Pausar Áudio
                   </>
                 ) : (
                   <>
@@ -295,7 +359,42 @@ function DictationPageContent() {
                   </>
                 )}
               </Button>
-              <p className="text-center text-sm text-text-primary/60 mt-4">
+              
+              {/* Audio Error Display */}
+              {audioError && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                  <p className="text-orange-600 text-sm text-center">{audioError}</p>
+                </div>
+              )}
+              
+              {/* Playback Speed Control */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-text-primary/70">
+                    Velocidade de Reprodução
+                  </label>
+                  <span className="text-sm font-semibold text-primary-yellow">
+                    {playbackSpeed.toFixed(1)}x
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="1.5"
+                  step="0.1"
+                  value={playbackSpeed}
+                  onChange={(e) => setPlaybackSpeed(parseFloat(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-yellow"
+                  disabled={status === "completed"}
+                />
+                <div className="flex justify-between text-xs text-text-primary/50">
+                  <span>0.5x (Lento)</span>
+                  <span>1.0x (Normal)</span>
+                  <span>1.5x (Rápido)</span>
+                </div>
+              </div>
+              
+              <p className="text-center text-sm text-text-primary/60">
                 Clica para ouvir a frase. Podes ouvir quantas vezes quiseres.
               </p>
             </CardContent>
@@ -334,19 +433,19 @@ function DictationPageContent() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
                   <div className="text-center">
                     <p className="text-2xl font-bold text-green-600">
-                      {result.detailedDiff.filter(t => t.type === 'correct').length}
+                      {result.correctWords}
                     </p>
                     <p className="text-xs text-text-primary/60">Corretas</p>
                   </div>
                   <div className="text-center">
                     <p className="text-2xl font-bold text-red-600">
-                      {result.detailedDiff.filter(t => t.type === 'added').length}
+                      {result.substitutionErrors}
                     </p>
                     <p className="text-xs text-text-primary/60">Erros</p>
                   </div>
                   <div className="text-center">
                     <p className="text-2xl font-bold text-green-600">
-                      {result.detailedDiff.filter(t => t.type === 'missing').length}
+                      {result.omissionErrors}
                     </p>
                     <p className="text-xs text-text-primary/60">Em falta</p>
                   </div>
