@@ -15,6 +15,11 @@ interface DiffItem {
   expected?: string; // For substitutions and omissions
 }
 
+interface DiffToken {
+  value: string;
+  type: 'correct' | 'added' | 'missing';
+}
+
 export interface DictationResult {
   accuracyPercentage: number;
   correctWords: number;
@@ -23,6 +28,7 @@ export interface DictationResult {
   omissionErrors: number;
   insertionErrors: number;
   diff: DiffItem[];
+  detailedDiff: DiffToken[];
 }
 
 export class DictationEvaluator {
@@ -43,6 +49,118 @@ export class DictationEvaluator {
   private static tokenize(text: string): string[] {
     const normalized = this.normalize(text);
     return normalized ? normalized.split(' ') : [];
+  }
+
+  /**
+   * Analyze diff at word level for detailed visual feedback
+   * Returns tokens with type: 'correct', 'added', or 'missing'
+   */
+  static analyzeDiff(original: string, userInput: string): DiffToken[] {
+    const originalWords = this.tokenize(original);
+    const userWords = this.tokenize(userInput);
+
+    if (originalWords.length === 0 && userWords.length === 0) {
+      return [];
+    }
+
+    if (originalWords.length === 0) {
+      // Everything is added
+      return userWords.map(word => ({ value: word, type: 'added' as const }));
+    }
+
+    if (userWords.length === 0) {
+      // Everything is missing
+      return originalWords.map(word => ({ value: word, type: 'missing' as const }));
+    }
+
+    // Compute LCS (Longest Common Subsequence) to align words
+    const lcs = this.computeLCS(originalWords, userWords);
+    
+    // Build diff tokens based on LCS alignment
+    const tokens: DiffToken[] = [];
+    let origIdx = 0;
+    let userIdx = 0;
+    let lcsIdx = 0;
+
+    while (origIdx < originalWords.length || userIdx < userWords.length) {
+      // Check if current words match (part of LCS)
+      if (
+        lcsIdx < lcs.length &&
+        origIdx < originalWords.length &&
+        userIdx < userWords.length &&
+        originalWords[origIdx] === lcs[lcsIdx] &&
+        userWords[userIdx] === lcs[lcsIdx]
+      ) {
+        // Correct word
+        tokens.push({ value: originalWords[origIdx], type: 'correct' });
+        origIdx++;
+        userIdx++;
+        lcsIdx++;
+      } else if (
+        userIdx < userWords.length &&
+        (lcsIdx >= lcs.length || userWords[userIdx] !== lcs[lcsIdx])
+      ) {
+        // Word in user input that's not in LCS = added/wrong word
+        tokens.push({ value: userWords[userIdx], type: 'added' });
+        userIdx++;
+      } else if (
+        origIdx < originalWords.length &&
+        (lcsIdx >= lcs.length || originalWords[origIdx] !== lcs[lcsIdx])
+      ) {
+        // Word in original that's not in LCS = missing word
+        tokens.push({ value: originalWords[origIdx], type: 'missing' });
+        origIdx++;
+      } else {
+        // Shouldn't reach here, but safety break
+        break;
+      }
+    }
+
+    return tokens;
+  }
+
+  /**
+   * Compute Longest Common Subsequence of two word arrays
+   * Returns the LCS as an array of words
+   */
+  private static computeLCS(words1: string[], words2: string[]): string[] {
+    const m = words1.length;
+    const n = words2.length;
+
+    // DP table: dp[i][j] = length of LCS of words1[0..i-1] and words2[0..j-1]
+    const dp: number[][] = Array(m + 1)
+      .fill(null)
+      .map(() => Array(n + 1).fill(0));
+
+    // Fill DP table
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        if (words1[i - 1] === words2[j - 1]) {
+          dp[i][j] = dp[i - 1][j - 1] + 1;
+        } else {
+          dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+        }
+      }
+    }
+
+    // Backtrack to find LCS
+    const lcs: string[] = [];
+    let i = m;
+    let j = n;
+
+    while (i > 0 && j > 0) {
+      if (words1[i - 1] === words2[j - 1]) {
+        lcs.unshift(words1[i - 1]);
+        i--;
+        j--;
+      } else if (dp[i - 1][j] > dp[i][j - 1]) {
+        i--;
+      } else {
+        j--;
+      }
+    }
+
+    return lcs;
   }
 
   /**
@@ -133,6 +251,7 @@ export class DictationEvaluator {
         omissionErrors: 0,
         insertionErrors: 0,
         diff: [],
+        detailedDiff: [],
       };
     }
 
@@ -164,6 +283,9 @@ export class DictationEvaluator {
 
     // Build diff for visual rendering
     const diff = this.buildDiff(originalWords, userWords, operations);
+    
+    // Add detailed diff for visual feedback
+    const detailedDiff = this.analyzeDiff(original, userInput);
 
     return { 
       accuracyPercentage, 
@@ -172,7 +294,8 @@ export class DictationEvaluator {
       substitutionErrors,
       omissionErrors,
       insertionErrors,
-      diff 
+      diff,
+      detailedDiff
     };
   }
 

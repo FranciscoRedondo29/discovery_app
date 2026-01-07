@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Play, Check, SkipForward, Volume2, Loader2 } from "lucide-react";
 import { useDictationAudio } from "@/hooks/useDictationAudio";
 import { DictationEvaluator, type DictationResult } from "@/lib/logic/DictationEvaluator";
+import { DictationFeedback } from "@/components/practice/DictationFeedback";
 import { getRandomExercise } from "@/lib/exercises";
 import type { Exercise } from "@/types/exercises";
 
@@ -215,74 +216,8 @@ export default function DictationPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Diff Display */}
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <h3 className="text-sm font-semibold text-text-primary mb-3">
-                    Comparação:
-                  </h3>
-                  <div className="text-2xl leading-relaxed" style={{ fontFamily: "OpenDyslexic, Arial, sans-serif" }}>
-                    {result.diff.map((item, index) => {
-                      if (item.type === "correct") {
-                        return (
-                          <span
-                            key={index}
-                            className="inline-block mx-1 px-2 py-1 bg-green-100 text-green-800 rounded-md"
-                            title="Correto"
-                          >
-                            {item.value}
-                          </span>
-                        );
-                      } else if (item.type === "substitution") {
-                        return (
-                          <span
-                            key={index}
-                            className="inline-block mx-1 px-2 py-1 bg-red-100 text-red-800 rounded-md"
-                            title={`Erro: deveria ser "${item.expected}"`}
-                          >
-                            {item.value}
-                          </span>
-                        );
-                      } else if (item.type === "omission") {
-                        return (
-                          <span
-                            key={index}
-                            className="inline-block mx-1 px-2 py-1 bg-red-100 text-red-800 rounded-md line-through"
-                            title="Palavra em falta"
-                          >
-                            {item.expected}
-                          </span>
-                        );
-                      } else if (item.type === "insertion") {
-                        return (
-                          <span
-                            key={index}
-                            className="inline-block mx-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-md"
-                            title="Palavra extra"
-                          >
-                            {item.value}
-                          </span>
-                        );
-                      }
-                      return null;
-                    })}
-                  </div>
-                </div>
-
-                {/* Legend */}
-                <div className="flex flex-wrap gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
-                    <span className="text-text-primary/70">Correto</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
-                    <span className="text-text-primary/70">Erro / Em falta</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded"></div>
-                    <span className="text-text-primary/70">Palavra extra</span>
-                  </div>
-                </div>
+                {/* New Detailed Visual Feedback */}
+                <DictationFeedback tokens={result.detailedDiff} />
 
                 {/* Statistics */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
@@ -299,7 +234,7 @@ export default function DictationPage() {
                     <p className="text-xs text-text-primary/60">Erros</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-red-600">
+                    <p className="text-2xl font-bold text-green-600">
                       {result.omissionErrors}
                     </p>
                     <p className="text-xs text-text-primary/60">Em falta</p>
@@ -310,6 +245,16 @@ export default function DictationPage() {
                     </p>
                     <p className="text-xs text-text-primary/60">Extras</p>
                   </div>
+                </div>
+
+                {/* Explanation text */}
+                <div className="text-sm text-text-primary/70 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="font-medium mb-2">Como ler o feedback:</p>
+                  <ul className="space-y-1 list-disc list-inside">
+                    <li>Palavras <span className="font-semibold text-green-600">verdes a negrito</span> são as que devias ter escrito mas faltaram</li>
+                    <li>Palavras <span className="bg-red-100 text-red-600 px-1 rounded line-through">riscadas a vermelho</span> são erros que escreveste</li>
+                    <li>Palavras normais estão corretas</li>
+                  </ul>
                 </div>
               </CardContent>
             </Card>
@@ -327,6 +272,10 @@ export default function DictationPage() {
                   disabled={status === "evaluating"}
                   className="min-h-[200px] text-xl resize-none"
                   style={{ fontFamily: "OpenDyslexic, Arial, sans-serif" }}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
                 />
                 <p className="text-sm text-text-primary/60">
                   Escreve a frase completa que ouviste. Depois clica em "Corrigir".
