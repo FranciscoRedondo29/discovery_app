@@ -436,13 +436,15 @@ export default function LearningPage() {
                 <SkipForward className="h-6 w-6 mr-3" />
                 Próxima Frase
               </Button>
+            </div>
 
-          {/* Info Text */}
-          <div className="text-center text-sm text-text-primary/60 space-y-1">
-            <p>
-              Nível: <span className="font-medium capitalize">{difficulty}</span>
-            </p>
-            <p>Clica em &quot;Reproduzir&quot; para ouvir a frase com destaque visual</p>
+            {/* Info Text */}
+            <div className="text-center text-sm text-text-primary/60 space-y-1">
+              <p>
+                Nível: <span className="font-medium capitalize">{difficulty}</span>
+              </p>
+              <p>Clica em &quot;Reproduzir&quot; para ouvir a frase com destaque visual</p>
+            </div>
           </div>
         </div>
       </main>
