@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ArrowLeft, Play, Pause, SkipForward, Settings, Volume2, CheckCircle2, XCircle, RefreshCw, Key } from "lucide-react";
 import { SyllableDivider } from "@/lib/logic/SyllableDivider";
-import { PHRASES, getRandomPhrase, type Phrase } from "@/lib/phrases";
+import { PHRASES, getRandomPhrase } from "@/lib/phrases";
+import type { Phrase } from "@/types/exercises";
 
 // Character Component ported from CSS
 const DiscoveryCharacter = () => (

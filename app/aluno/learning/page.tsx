@@ -399,9 +399,10 @@ export default function LearningPage() {
               )}
             </CardContent>
           </Card>
+        </div>
 
-          {/* Controls Footer */}
-          <div className="flex flex-col items-center gap-6 pb-12">
+        {/* Controls Footer */}
+        <div className="flex flex-col items-center gap-6 pb-12">
             <div className="flex gap-4 flex-wrap justify-center">
               {/* Play/Pause Button */}
               <Button
@@ -435,16 +436,13 @@ export default function LearningPage() {
               >
                 <SkipForward className="h-6 w-6 mr-3" />
                 Próxima Frase
-              </Button>
-            </div>
-
-            {/* Info Text */}
-            <div className="text-center text-sm text-text-primary/60 space-y-1">
-              <p>
-                Nível: <span className="font-medium capitalize">{difficulty}</span>
-              </p>
-              <p>Clica em &quot;Reproduzir&quot; para ouvir a frase com destaque visual</p>
-            </div>
+              </Button>            </div>
+          {/* Info Text */}
+          <div className="text-center text-sm text-text-primary/60 space-y-1">
+            <p>
+              Nível: <span className="font-medium capitalize">{difficulty}</span>
+            </p>
+            <p>Clica em &quot;Reproduzir&quot; para ouvir a frase com destaque visual</p>
           </div>
         </div>
       </main>
