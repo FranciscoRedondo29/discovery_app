@@ -9,8 +9,7 @@ interface UseSyllableAudioReturn {
   reset: () => void;
 }
 
-const STORAGE_PREFIX = 'eleven_multilingual_v2'; // v2 for eleven_turbo_v2_5 model
-const ELEVENLABS_VOICE_ID = 'NndrHq4eUijN4wsQVtzW'; // Adam voice - adjust as needed
+const STORAGE_PREFIX = 'syllib_v2_'; // v2 for eleven_turbo_v2_5 model
 
 /**
  * Custom hook for syllable-by-syllable audio playback with caching
@@ -31,7 +30,7 @@ export function useSyllableAudio(
 
   // Debug: Check API key on mount
   useEffect(() => {
-    const apiKey = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY;
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
     if (apiKey) {
       console.log('[useSyllableAudio] API key found:', apiKey.substring(0, 4) + '...');
     } else {
@@ -89,18 +88,24 @@ export function useSyllableAudio(
   }, []);
 
   /**
+  /**
    * Fetch audio from ElevenLabs API
    */
   const fetchAudioFromAPI = useCallback(async (syllable: string): Promise<string> => {
-    const apiKey = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY;
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY;
+    const voiceId = process.env.NEXT_PUBLIC_VOICE_ID;
     
     if (!apiKey) {
       console.error('[useSyllableAudio] ⚠️ API key not found in environment variables');
       throw new Error('ElevenLabs API key not configured');
     }
 
-    const url = `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`;
-    
+    if (!voiceId) {
+      console.error('[useSyllableAudio] ⚠️ Voice ID not found in environment variables');
+      throw new Error('Voice ID not configured');
+    }
+
+    const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
     console.log('[useSyllableAudio] Fetching audio for syllable:', syllable);
     console.log('[useSyllableAudio] API URL:', url);
 
@@ -141,7 +146,14 @@ export function useSyllableAudio(
       console.log('[useSyllableAudio] Audio blob size:', audioBlob.size, 'bytes');
       
       const arrayBuffer = await audioBlob.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      
+      // Convert ArrayBuffer to base64 without Buffer.from (browser-safe)
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
       
       console.log('[useSyllableAudio] ✓ Audio fetched and encoded successfully');
       return base64;
@@ -291,10 +303,10 @@ export function useSyllableAudio(
 
         await playSyllable(syllables[i], i, activeContext);
         
-        // Small pause between syllables (adjusted by speed)
+        // Pause between syllables: 0.5 seconds (adjusted by speed)
         if (i < syllables.length - 1 && !signal.aborted) {
           await new Promise(resolve => {
-            playbackTimeoutRef.current = setTimeout(resolve, 100 / speed);
+            playbackTimeoutRef.current = setTimeout(resolve, 500 / speed);
           });
         }
       }

@@ -35,3 +35,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# gravacoes de audio
+/gravacoes/*.webm
+/gravacoes/*.wav
+/gravacoes/*.mp3
