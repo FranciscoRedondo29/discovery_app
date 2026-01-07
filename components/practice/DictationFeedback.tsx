@@ -26,7 +26,7 @@ export function DictationFeedback({ tokens, className = '' }: DictationFeedbackP
       </h3>
       
       <div 
-        className="text-2xl leading-relaxed space-x-1"
+        className="text-2xl leading-relaxed space-x-2 md:space-x-3"
         style={{ fontFamily: "OpenDyslexic, Arial, sans-serif" }}
       >
         {tokens.map((token, index) => {
@@ -34,7 +34,7 @@ export function DictationFeedback({ tokens, className = '' }: DictationFeedbackP
             return (
               <span
                 key={index}
-                className="inline-block text-gray-900"
+                className="inline-block text-gray-900 mr-2 md:mr-3"
                 title="Palavra correta"
               >
                 {token.value}

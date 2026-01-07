@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,13 +9,25 @@ import { ArrowLeft, Play, Check, SkipForward, Volume2, Loader2 } from "lucide-re
 import { useDictationAudio } from "@/hooks/useDictationAudio";
 import { DictationEvaluator, type DictationResult } from "@/lib/logic/DictationEvaluator";
 import { DictationFeedback } from "@/components/practice/DictationFeedback";
-import { getRandomExercise } from "@/lib/exercises";
-import type { Exercise } from "@/types/exercises";
+import { getRandomExercise, insertDictationMetrics } from "@/lib/exercises";
+import type { Exercise, DifficultyPT, DifficultyEN } from "@/types/exercises";
+import { DIFFICULTY_LABELS, difficultyPTtoEN, difficultyENtoPT } from "@/types/exercises";
+import { supabase } from "@/lib/supabaseClient";
 
 type Status = "listening" | "evaluating" | "completed";
 
-export default function DictationPage() {
+function DictationPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get difficulty from URL or default to 'medio'
+  const getDifficultyFromURL = (): DifficultyPT => {
+    const nivel = searchParams.get('nivel') as DifficultyPT | null;
+    if (nivel && ['facil', 'medio', 'dificil'].includes(nivel)) {
+      return nivel;
+    }
+    return 'medio';
+  };
 
   // State management
   const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
@@ -24,15 +36,17 @@ export default function DictationPage() {
   const [status, setStatus] = useState<Status>("listening");
   const [isLoadingExercise, setIsLoadingExercise] = useState(true);
   const [error, setError] = useState("");
+  const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyPT>(getDifficultyFromURL());
+  const [metricsSaved, setMetricsSaved] = useState(false);
 
   // Audio hook
   const { play, isPlaying, isLoading: audioLoading, stop } = useDictationAudio();
 
-  // Load exercise on mount
+  // Load exercise on mount and when difficulty changes
   useEffect(() => {
     loadNewExercise();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedDifficulty]);
 
   async function loadNewExercise() {
     setIsLoadingExercise(true);
@@ -40,6 +54,7 @@ export default function DictationPage() {
     setUserInput("");
     setResult(null);
     setStatus("listening");
+    setMetricsSaved(false);
     
     // Only stop if audio is actually playing
     if (isPlaying) {
@@ -47,11 +62,12 @@ export default function DictationPage() {
     }
 
     try {
-      const exercise = await getRandomExercise("medium");
+      const difficultyEN = difficultyPTtoEN(selectedDifficulty);
+      const exercise = await getRandomExercise(difficultyEN);
       if (exercise) {
         setCurrentExercise(exercise);
       } else {
-        setError("Nenhum exercício disponível");
+        setError(`Nenhum exercício disponível para o nível ${DIFFICULTY_LABELS[selectedDifficulty]}`);
       }
     } catch (err) {
       console.error("Error loading exercise:", err);
@@ -72,7 +88,7 @@ export default function DictationPage() {
     }
   };
 
-  const handleEvaluate = () => {
+  const handleEvaluate = async () => {
     if (!currentExercise || !userInput.trim()) return;
 
     setStatus("evaluating");
@@ -84,6 +100,9 @@ export default function DictationPage() {
       );
       setResult(evaluationResult);
       setStatus("completed");
+
+      // Save metrics to database (non-blocking)
+      saveDictationMetrics(evaluationResult);
     } catch (err) {
       console.error("Error evaluating:", err);
       setError("Erro ao avaliar o ditado");
@@ -91,8 +110,57 @@ export default function DictationPage() {
     }
   };
 
+  const saveDictationMetrics = async (evaluationResult: DictationResult) => {
+    // Avoid duplicate inserts
+    if (metricsSaved) {
+      console.log('[saveDictationMetrics] Metrics already saved, skipping');
+      return;
+    }
+
+    try {
+      // Get authenticated user
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user?.id) {
+        console.warn('[saveDictationMetrics] No authenticated user, skipping metrics save');
+        return;
+      }
+
+      const difficultyEN = difficultyPTtoEN(selectedDifficulty);
+
+      const result = await insertDictationMetrics({
+        studentId: session.user.id,
+        exerciseId: currentExercise?.id,
+        difficulty: difficultyEN,
+        correctCount: evaluationResult.correctWords,
+        errorCount: evaluationResult.substitutionErrors,
+        missingCount: evaluationResult.omissionErrors,
+        extraCount: evaluationResult.insertionErrors,
+        accuracyPercent: evaluationResult.accuracyPercentage,
+      });
+
+      if (result.success) {
+        setMetricsSaved(true);
+        console.log('[saveDictationMetrics] ✓ Metrics saved successfully');
+      } else {
+        console.error('[saveDictationMetrics] Failed to save metrics:', result.error);
+      }
+    } catch (err) {
+      console.error('[saveDictationMetrics] Error saving metrics:', err);
+      // Non-blocking: don't show error to user, just log it
+    }
+  };
+
   const handleNextExercise = () => {
     loadNewExercise();
+  };
+
+  const handleDifficultyChange = (difficulty: DifficultyPT) => {
+    setSelectedDifficulty(difficulty);
+    // Update URL query param
+    const url = new URL(window.location.href);
+    url.searchParams.set('nivel', difficulty);
+    router.push(url.pathname + url.search, { scroll: false });
   };
 
   const getScoreColor = (score: number) => {
@@ -145,6 +213,37 @@ export default function DictationPage() {
       {/* Main Content */}
       <main className="flex-1 container mx-auto max-w-4xl px-4 py-8">
         <div className="space-y-6">
+          {/* Difficulty Selector */}
+          <Card className="border-2 border-gray-200">
+            <CardHeader>
+              <CardTitle className="text-lg">Nível de Dificuldade</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-3 flex-wrap">
+                {(['facil', 'medio', 'dificil'] as DifficultyPT[]).map((diff) => (
+                  <Button
+                    key={diff}
+                    onClick={() => handleDifficultyChange(diff)}
+                    disabled={isLoadingExercise || status === "evaluating"}
+                    variant={selectedDifficulty === diff ? "default" : "outline"}
+                    className={`
+                      flex-1 min-w-[100px] font-semibold
+                      ${selectedDifficulty === diff 
+                        ? 'bg-primary-yellow text-text-primary hover:bg-primary-yellow/90' 
+                        : 'hover:bg-gray-100'
+                      }
+                    `}
+                  >
+                    {DIFFICULTY_LABELS[diff]}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-sm text-text-primary/60 mt-3 text-center">
+                Selecionado: <span className="font-semibold">{DIFFICULTY_LABELS[selectedDifficulty]}</span>
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Error Display */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -278,7 +377,7 @@ export default function DictationPage() {
                   spellCheck="false"
                 />
                 <p className="text-sm text-text-primary/60">
-                  Escreve a frase completa que ouviste. Depois clica em "Corrigir".
+                  Escreve a frase completa que ouviste. Depois clica em &quot;Corrigir&quot;.
                 </p>
               </CardContent>
             </Card>
@@ -331,5 +430,20 @@ export default function DictationPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function DictationPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-soft-yellow flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-yellow mx-auto"></div>
+          <p className="text-text-primary/70">A carregar...</p>
+        </div>
+      </div>
+    }>
+      <DictationPageContent />
+    </Suspense>
   );
 }

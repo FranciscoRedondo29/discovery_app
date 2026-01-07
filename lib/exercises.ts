@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
-import { Exercise } from "@/types/exercises";
+import { Exercise, InsertDictationMetrics } from "@/types/exercises";
 
 /**
  * Fetches a random exercise matching the given difficulty level
@@ -45,6 +45,69 @@ export async function getRandomExercise(
   } catch (err) {
     console.error('Unexpected error in getRandomExercise:', err);
     return null;
+  }
+}
+
+/**
+ * Inserts dictation metrics into the database
+ * 
+ * @param metrics - The metrics to insert
+ * @returns Success status and optional error message
+ * 
+ * @example
+ * const result = await insertDictationMetrics({
+ *   studentId: 'uuid',
+ *   difficulty: 'medium',
+ *   correctCount: 8,
+ *   errorCount: 2,
+ *   missingCount: 1,
+ *   extraCount: 0,
+ *   accuracyPercent: 85.5,
+ *   exerciseId: 'exercise-uuid'
+ * });
+ */
+export async function insertDictationMetrics(
+  metrics: InsertDictationMetrics
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Validate input
+    if (!metrics.studentId) {
+      console.error('Student ID is required');
+      return { success: false, error: 'Student ID is required' };
+    }
+
+    if (!['easy', 'medium', 'hard'].includes(metrics.difficulty)) {
+      console.error('Invalid difficulty level:', metrics.difficulty);
+      return { success: false, error: 'Invalid difficulty level' };
+    }
+
+    // Insert into database
+    const { error } = await supabase
+      .from('dictation_metrics')
+      .insert({
+        student_id: metrics.studentId,
+        exercise_id: metrics.exerciseId || null,
+        difficulty: metrics.difficulty,
+        correct_count: metrics.correctCount,
+        error_count: metrics.errorCount,
+        missing_count: metrics.missingCount,
+        extra_count: metrics.extraCount,
+        accuracy_percent: metrics.accuracyPercent,
+      });
+
+    if (error) {
+      console.error('Error inserting dictation metrics:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log('[insertDictationMetrics] Metrics saved successfully');
+    return { success: true };
+  } catch (err) {
+    console.error('Unexpected error in insertDictationMetrics:', err);
+    return { 
+      success: false, 
+      error: err instanceof Error ? err.message : 'Unknown error' 
+    };
   }
 }
 

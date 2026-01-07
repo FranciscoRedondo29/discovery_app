@@ -333,7 +333,7 @@ export default function LearningPage() {
             <p>
               Nível: <span className="font-medium capitalize">{difficulty}</span>
             </p>
-            <p>Clica em "Reproduzir" para ouvir a frase com destaque visual</p>
+            <p>Clica em &quot;Reproduzir&quot; para ouvir a frase com destaque visual</p>
           </div>
         </div>
       </main>
