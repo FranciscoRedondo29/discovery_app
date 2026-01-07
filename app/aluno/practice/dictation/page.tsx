@@ -334,19 +334,19 @@ function DictationPageContent() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
                   <div className="text-center">
                     <p className="text-2xl font-bold text-green-600">
-                      {result.correctWords}
+                      {result.detailedDiff.filter(t => t.type === 'correct').length}
                     </p>
                     <p className="text-xs text-text-primary/60">Corretas</p>
                   </div>
                   <div className="text-center">
                     <p className="text-2xl font-bold text-red-600">
-                      {result.substitutionErrors}
+                      {result.detailedDiff.filter(t => t.type === 'added').length}
                     </p>
                     <p className="text-xs text-text-primary/60">Erros</p>
                   </div>
                   <div className="text-center">
                     <p className="text-2xl font-bold text-green-600">
-                      {result.omissionErrors}
+                      {result.detailedDiff.filter(t => t.type === 'missing').length}
                     </p>
                     <p className="text-xs text-text-primary/60">Em falta</p>
                   </div>
