@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Play, Pause, SkipForward, Settings, RefreshCw } from "lucide-react";
@@ -30,6 +31,9 @@ export default function LearningPage() {
   const [completedExercises, setCompletedExercises] = useState<Set<number>>(new Set());
   const [hasFinishedPlayback, setHasFinishedPlayback] = useState(false);
   const [isPlaybackStarted, setIsPlaybackStarted] = useState(false);
+
+  // Audio ref
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Highlight playback hook for syllables mode
   const highlight = useHighlightPlayback();
@@ -126,10 +130,20 @@ export default function LearningPage() {
   }
 
   const handlePlayPause = () => {
+    // Play audio if available
+    if (currentPhrase?.audioFile) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      audioRef.current = new Audio(currentPhrase.audioFile);
+      audioRef.current.play().catch(err => console.error('Error playing audio:', err));
+    }
+
     if (showSyllables) {
       // Syllable mode: use highlight hook
       if (highlight.isPlaying) {
         highlight.pause();
+        if (audioRef.current) audioRef.current.pause();
       } else {
         if (currentPhrase && currentPhrase.syllables) {
           highlight.play(currentPhrase.syllables);
@@ -137,12 +151,13 @@ export default function LearningPage() {
         }
       }
     } else {
-      // Phrase mode: use word highlight hook (0.3s per syllable per word)
+      // Phrase mode: use word highlight hook with wordTimings from audio
       if (wordHighlight.isPlaying) {
         wordHighlight.pause();
+        if (audioRef.current) audioRef.current.pause();
       } else {
-        if (currentPhrase && currentPhrase.syllables) {
-          wordHighlight.play(currentPhrase.text, currentPhrase.syllables);
+        if (currentPhrase && currentPhrase.wordTimings) {
+          wordHighlight.play(currentPhrase.wordTimings);
           setIsPlaybackStarted(true);
         }
       }
@@ -204,15 +219,16 @@ export default function LearningPage() {
       {/* Header */}
       <header className="px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Button
-            onClick={() => router.push("/aluno")}
-            variant="ghost"
-            size="sm"
-            className="text-gray-800 hover:bg-transparent"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar
-          </Button>
+          <Link href="/aluno">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-gray-800 hover:bg-gray-100 cursor-pointer"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar
+            </Button>
+          </Link>
           <h1 className="text-2xl font-bold text-gray-800">
             Modo de Leitura
           </h1>
@@ -278,14 +294,30 @@ export default function LearningPage() {
       <div className="px-6 py-4 flex justify-center">
         <div className="flex gap-3">
           {getPhrasesByLevel(difficulty).map((phrase) => (
-            <div
+            <button
               key={phrase.id}
-              className={`w-3 h-3 rounded-full transition-colors duration-300 ${
+              onClick={() => {
+                // Stop any playing audio/highlight
+                highlight.reset();
+                wordHighlight.reset();
+                if (audioRef.current) {
+                  audioRef.current.pause();
+                  audioRef.current = null;
+                }
+                setHasFinishedPlayback(false);
+                setIsPlaybackStarted(false);
+                setShowSyllables(false);
+                // Load selected phrase
+                setCurrentText(phrase.text);
+                setCurrentPhrase(phrase);
+                setSelectedPhraseId(phrase.id);
+              }}
+              className={`w-3 h-3 rounded-full transition-colors duration-300 cursor-pointer hover:scale-125 ${
                 completedExercises.has(phrase.id)
                   ? 'bg-green-500'
                   : phrase.id === currentPhrase?.id
                   ? 'bg-green-300 ring-2 ring-green-400'
-                  : 'bg-gray-300'
+                  : 'bg-gray-300 hover:bg-gray-400'
               }`}
               title={`Exercício ${phrase.id}: ${phrase.text}`}
             />
@@ -294,19 +326,10 @@ export default function LearningPage() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 flex px-4 py-8">
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col items-center justify-center max-w-6xl mx-auto space-y-8">
-
-          {/* Error Display */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-              <p className="text-red-600 text-sm">{error}</p>
-            </div>
-          )}
-
+      <main className="flex-1 flex items-center justify-center px-6 py-8">
+        <div className="flex flex-col items-center justify-center gap-8 max-w-6xl w-full">
           {/* Reading Area Card */}
-          <Card className="border rounded-2xl shadow-sm bg-white overflow-hidden min-h-[500px] flex flex-col justify-center relative">
+          <Card className="border rounded-2xl shadow-sm bg-white overflow-hidden min-h-[400px] w-full max-w-4xl flex flex-col justify-center relative">
             {/* Restart Button */}
             <button
               onClick={() => {
@@ -330,34 +353,34 @@ export default function LearningPage() {
             >
               <RefreshCw className="h-5 w-5" />
             </button>
-            <CardContent className="p-12 h-full flex flex-col items-center">
+            <CardContent className="p-8 h-full flex flex-col items-center justify-center">
               {isLoading ? (
                 <div className="text-center py-24">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-yellow mx-auto"></div>
                   <p className="text-text-primary/70 mt-4">A carregar exercício...</p>
                 </div>
               ) : (
-                <div className="w-full flex flex-col items-center gap-12">
+                <div className="w-full flex flex-col items-center gap-8">
                   {/* Full sentence (small, top) */}
-                  <div className="w-full max-w-md flex flex-col items-center gap-4">
+                  <div className="w-full flex flex-col items-center gap-4">
                     <div 
-                      className="text-xl text-gray-400 font-medium text-center"
+                      className="text-lg text-gray-400 font-medium text-center"
                       style={{ fontFamily: "'OpenDyslexic', sans-serif" }}
                     >
                       {currentText}
                     </div>
-                    <div className="w-24 h-[1px] bg-gray-100"></div>
+                    <div className="w-24 h-[1px] bg-gray-200"></div>
                   </div>
 
                   {/* Main display - conditional rendering */}
                   {showSyllables ? (
                     // Syllables mode (large, separated with highlighting)
-                    <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-8 min-h-[200px] px-8">
+                    <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4 min-h-[150px] px-10">
                       {syllables.map((syllable, index) => (
                         <span
                           key={`${index}-${syllable}`}
                           className={`
-                            text-5xl md:text-6xl font-bold transition-all duration-200 tracking-wider
+                            text-4xl md:text-5xl font-bold transition-all duration-200 tracking-wider
                             ${
                               highlight.isPlaying && highlight.currentSyllableIndex === index
                                 ? "text-white bg-primary-yellow px-4 py-2 rounded-xl scale-110 shadow-lg"
@@ -374,12 +397,12 @@ export default function LearningPage() {
                     </div>
                   ) : (
                     // Full phrase mode (words with highlighting based on syllable count)
-                    <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-8 min-h-[200px] px-8">
+                    <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4 min-h-[150px] px-10">
                       {currentText.split(/\s+/).map((word, index) => (
                         <span
                           key={`${index}-${word}`}
                           className={`
-                            text-5xl md:text-6xl font-bold transition-all duration-200 tracking-wider
+                            text-4xl md:text-5xl font-bold transition-all duration-200 tracking-wider
                             ${
                               wordHighlight.isPlaying && wordHighlight.currentWordIndex === index
                                 ? "text-white bg-primary-yellow px-4 py-2 rounded-xl scale-110 shadow-lg"
@@ -399,25 +422,24 @@ export default function LearningPage() {
               )}
             </CardContent>
           </Card>
-        </div>
 
-        {/* Controls Footer */}
-        <div className="flex flex-col items-center gap-6 pb-12">
-            <div className="flex gap-4 flex-wrap justify-center">
+          {/* Controls - now below the card */}
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex gap-4">
               {/* Play/Pause Button */}
               <Button
                 onClick={handlePlayPause}
                 disabled={isLoading || !currentPhrase}
-                className="bg-primary-yellow text-gray-900 hover:bg-primary-yellow/90 font-bold text-lg px-8 py-7 rounded-2xl shadow-sm min-w-[220px]"
+                className="bg-[#E5A534] text-gray-900 hover:bg-[#E5A534]/90 font-bold text-lg px-8 py-6 rounded-2xl shadow-sm min-w-[200px]"
               >
                 {(showSyllables ? highlight.isPlaying : wordHighlight.isPlaying) ? (
                   <>
-                    <Pause className="h-6 w-6 mr-3 fill-current" />
+                    <Pause className="h-5 w-5 mr-2 fill-current" />
                     Pausar
                   </>
                 ) : (
                   <>
-                    <Play className="h-6 w-6 mr-3 fill-current" />
+                    <Play className="h-5 w-5 mr-2 fill-current" />
                     Reproduzir
                   </>
                 )}
@@ -428,21 +450,24 @@ export default function LearningPage() {
                 onClick={handleNextSentence}
                 disabled={isLoading || !hasFinishedPlayback}
                 variant="outline"
-                className={`font-bold text-lg px-8 py-7 rounded-2xl shadow-sm min-w-[220px] ${
+                className={`font-bold text-lg px-8 py-6 rounded-2xl shadow-sm min-w-[200px] ${
                   hasFinishedPlayback
-                    ? 'bg-white border-primary-yellow border-2 text-gray-900 hover:bg-white/90'
-                    : 'bg-gray-200 border-gray-300 border-2 text-gray-400 cursor-not-allowed'
+                    ? 'bg-white border-gray-300 border-2 text-gray-700 hover:bg-gray-50'
+                    : 'bg-gray-100 border-gray-200 border-2 text-gray-400 cursor-not-allowed'
                 }`}
               >
-                <SkipForward className="h-6 w-6 mr-3" />
+                <SkipForward className="h-5 w-5 mr-2" />
                 Próxima Frase
-              </Button>            </div>
-          {/* Info Text */}
-          <div className="text-center text-sm text-text-primary/60 space-y-1">
-            <p>
-              Nível: <span className="font-medium capitalize">{difficulty}</span>
-            </p>
-            <p>Clica em &quot;Reproduzir&quot; para ouvir a frase com destaque visual</p>
+              </Button>
+            </div>
+            
+            {/* Info Text */}
+            <div className="text-sm text-gray-500 space-y-1">
+              <p>
+                Nível: <span className="font-medium capitalize">{difficulty === 'easy' ? 'Easy' : difficulty === 'medium' ? 'Medium' : 'Hard'}</span>
+              </p>
+              <p className="text-xs text-gray-400">Clica em &quot;Reproduzir&quot; para ouvir a frase com destaque visual</p>
+            </div>
           </div>
         </div>
       </main>

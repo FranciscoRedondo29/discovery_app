@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ArrowLeft, Play, Pause, SkipForward, Settings, Volume2, CheckCircle2, XCircle, RefreshCw, Key } from "lucide-react";
 import { SyllableDivider } from "@/lib/logic/SyllableDivider";
-import { PHRASES, getRandomPhrase } from "@/lib/phrases";
+import { PHRASES, getRandomPhrase, getPhrasesByLevel } from "@/lib/phrases";
 import type { Phrase } from "@/types/exercises";
 
 // Character Component ported from CSS
@@ -69,6 +69,10 @@ export default function PraticarPage() {
   const [ignoreCase, setIgnoreCase] = useState(true);
   const [ignorePunct, setIgnorePunct] = useState(true);
 
+  // Progress tracking
+  const [completedExercises, setCompletedExercises] = useState<Set<number>>(new Set());
+  const [currentPhraseIndex, setCurrentPhraseIndex] = useState(0);
+
   // Load initial phrase
   useEffect(() => {
     loadNewPhrase();
@@ -78,8 +82,22 @@ export default function PraticarPage() {
   }, []);
 
   const loadNewPhrase = () => {
-    const phrase = getRandomPhrase(difficulty);
+    const phrasesForLevel = getPhrasesByLevel(difficulty);
+    
+    // Find next phrase in sequence
+    let nextIndex = 0;
+    if (currentPhrase) {
+      const currentIndex = phrasesForLevel.findIndex(p => p.id === currentPhrase.id);
+      if (currentIndex >= 0 && currentIndex < phrasesForLevel.length - 1) {
+        nextIndex = currentIndex + 1;
+      } else {
+        nextIndex = 0; // Loop back
+      }
+    }
+    
+    const phrase = phrasesForLevel[nextIndex];
     setCurrentPhrase(phrase);
+    setCurrentPhraseIndex(nextIndex);
     setUserInput("");
     setShowResult(false);
     setResult(null);
@@ -102,40 +120,18 @@ export default function PraticarPage() {
     
     stopAudio();
     
-    if (!audioBufferRef.current) {
+    // Use local audio file if available
+    if (currentPhrase.audioFile) {
       setAudioLoading(true);
       try {
-        const apiKey = process.env.NEXT_PUBLIC_API_KEY;
-        const voiceId = process.env.NEXT_PUBLIC_VOICE_ID;
-        
-        if (!apiKey || !voiceId) {
-          throw new Error('Configuração de áudio em falta');
-        }
-
-        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-          method: 'POST',
-          headers: {
-            'Accept': 'audio/mpeg',
-            'Content-Type': 'application/json',
-            'xi-api-key': apiKey,
-          },
-          body: JSON.stringify({
-            text: currentPhrase.text,
-            model_id: 'eleven_turbo_v2',
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.75,
-            }
-          }),
-        });
-
-        if (!response.ok) throw new Error('Falha ao gerar áudio');
-        
-        const arrayBuffer = await response.arrayBuffer();
         if (!audioContextRef.current) {
           audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
         }
         
+        const response = await fetch(currentPhrase.audioFile);
+        if (!response.ok) throw new Error('Falha ao carregar áudio');
+        
+        const arrayBuffer = await response.arrayBuffer();
         audioBufferRef.current = await audioContextRef.current.decodeAudioData(arrayBuffer);
       } catch (err) {
         console.error('Audio error:', err);
@@ -144,6 +140,52 @@ export default function PraticarPage() {
         return;
       } finally {
         setAudioLoading(false);
+      }
+    } else {
+      // Fallback to ElevenLabs API if no local file
+      if (!audioBufferRef.current) {
+        setAudioLoading(true);
+        try {
+          const apiKey = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY;
+          const voiceId = process.env.NEXT_PUBLIC_VOICE_ID || 'pNInz6obpgDQGcFmaJgB';
+          
+          if (!apiKey) {
+            throw new Error('Configuração de áudio em falta');
+          }
+
+          const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+            method: 'POST',
+            headers: {
+              'Accept': 'audio/mpeg',
+              'Content-Type': 'application/json',
+              'xi-api-key': apiKey,
+            },
+            body: JSON.stringify({
+              text: currentPhrase.text,
+              model_id: 'eleven_turbo_v2',
+              voice_settings: {
+                stability: 0.5,
+                similarity_boost: 0.75,
+              }
+            }),
+          });
+
+          if (!response.ok) throw new Error('Falha ao gerar áudio');
+        
+          const arrayBuffer = await response.arrayBuffer();
+          if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+          }
+          
+          audioBufferRef.current = await audioContextRef.current.decodeAudioData(arrayBuffer);
+        } catch (err) {
+          console.error('Audio error:', err);
+          alert('Erro ao carregar áudio. Verifica a tua ligação.');
+          setAudioLoading(false);
+          return;
+        } finally {
+          setAudioLoading(false);
+        }
       }
     }
 
@@ -250,6 +292,11 @@ export default function PraticarPage() {
       stats: { correct, total, wrong, missing, extra, pct }
     });
     setShowResult(true);
+    
+    // Mark as completed if correct
+    if (distance === 0 && currentPhrase) {
+      setCompletedExercises(prev => new Set(Array.from(prev).concat(currentPhrase.id)));
+    }
   };
 
   const handleCheck = () => {
@@ -263,16 +310,17 @@ export default function PraticarPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col font-sans">
+    <div className="min-h-screen bg-[#FFFBF0] flex flex-col font-sans">
       {/* Header */}
       <header className="px-6 py-4 flex items-center justify-between border-b bg-white sticky top-0 z-10">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => router.push("/aluno")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar
-          </Button>
-          <h1 className="text-xl font-bold text-gray-800">Ditado</h1>
-        </div>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => router.back()}
+          className="text-gray-600 hover:text-gray-900"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
         
         <Dialog>
           <DialogTrigger asChild>
@@ -328,64 +376,79 @@ export default function PraticarPage() {
         </Dialog>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center p-6 max-w-2xl mx-auto w-full">
-        <h2 className="text-2xl font-bold text-gray-700 mb-8 w-full text-left">Escreve o que ouves</h2>
-
-        {/* Character and Audio Section */}
-        <div className="w-full flex items-center gap-8 mb-10">
-          <DiscoveryCharacter />
-          
-          <div className="flex gap-3 bg-gray-100 p-2 rounded-2xl">
-            <Button
-              onClick={() => playAudio(1.0)}
-              disabled={audioLoading}
-              className="w-14 h-12 bg-white hover:bg-gray-50 text-blue-500 shadow-sm border-0 rounded-xl"
-            >
-              {audioLoading ? <RefreshCw className="h-6 w-6 animate-spin" /> : <Volume2 className="h-7 w-7" />}
-            </Button>
-            <Button
-              onClick={() => playAudio(0.6)}
-              disabled={audioLoading}
-              className="w-14 h-12 bg-white hover:bg-gray-50 text-blue-400 shadow-sm border-0 rounded-xl"
-            >
-               <svg className="h-7 w-7 fill-current" viewBox="0 0 24 24">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" fill="none"/>
-                  <path d="M20.5 12c0-1.77-1.02-3.29-2.5-4.03v1.79l2.5 2.5c0-.08 0-.17 0-.26zm-1-8.77v2.06c2.89.86 5 3.54 5 6.71 0 .94-.19 1.84-.52 2.65l1.54 1.54c.63-1.24.98-2.65.98-4.19 0-4.28-2.99-7.86-7-8.77z"/>
-                  <path d="M10 9.5v5l4 2.5V7l-4 2.5z"/>
-                  <path d="M4 9v6h3l4 4V5L7 9H4z"/>
-               </svg>
-            </Button>
-          </div>
+      <main className="flex-1 flex flex-col p-6 max-w-4xl mx-auto w-full">
+        {/* Progress dots */}
+        <div className="flex items-center justify-center gap-2 mb-8">
+          {getPhrasesByLevel(difficulty).map((phrase, i) => (
+            <div 
+              key={phrase.id} 
+              className={`w-3 h-3 rounded-full transition-colors duration-300 ${
+                completedExercises.has(phrase.id)
+                  ? 'bg-[#58CC02]'
+                  : phrase.id === currentPhrase?.id
+                  ? 'bg-[#58CC02] ring-2 ring-[#58CC02]/50'
+                  : 'bg-gray-300'
+              }`}
+            />
+          ))}
         </div>
 
-        {/* Input area */}
-        <div className="w-full mb-6">
-          <textarea
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            disabled={showResult}
-            placeholder="Escreve em Português..."
-            className="w-full min-h-[160px] p-6 text-xl border-2 border-gray-200 rounded-2xl focus:border-blue-400 focus:outline-none transition-colors resize-none bg-white"
-            style={{ fontFamily: "'OpenDyslexic', sans-serif" }}
-          />
+        {/* Content Card - Centered */}
+        <div className="flex-1 flex items-center justify-center mb-8">
+          <Card className="w-full max-w-2xl bg-white shadow-lg border-2 border-gray-200">
+            <CardContent className="p-8">
+              {/* Small phrase text at top with refresh icon */}
+              <div className="flex items-center justify-between mb-6">
+                <p className="text-gray-600 text-base">{currentPhrase?.text}</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={loadNewPhrase}
+                  className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Large phrase display */}
+              <div className="text-center mb-12">
+                <h2 className="text-5xl font-bold text-gray-900 tracking-tight">
+                  {currentPhrase?.text}
+                </h2>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        <div className="w-full text-center mb-8">
-          <button 
-            onClick={handleSkip}
-            className="text-gray-400 font-bold text-sm tracking-widest uppercase hover:text-gray-600 transition-colors"
+        {/* Bottom buttons section */}
+        <div className="flex items-center justify-center gap-4 mb-6">
+          <Button
+            onClick={() => playAudio(1.0)}
+            disabled={audioLoading}
+            size="lg"
+            className="bg-[#FFC800] hover:bg-[#FFD700] text-gray-900 font-bold text-lg px-12 py-6 rounded-2xl shadow-md border-b-4 border-[#E5A800] active:border-b-0 active:translate-y-[2px] transition-all"
           >
-            NÃO CONSIGO OUVIR AGORA
-          </button>
+            <Play className="h-6 w-6 mr-3" />
+            Reproduzir
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="lg"
+            className="text-gray-400 hover:text-gray-600 font-bold px-8 py-6"
+          >
+            <SkipForward className="h-6 w-6 mr-2" />
+            Próxima Frase
+          </Button>
         </div>
 
-        <Button
-          onClick={handleCheck}
-          disabled={!userInput.trim() || showResult}
-          className="w-full py-7 text-lg font-bold tracking-wider uppercase rounded-2xl bg-[#58cc02] hover:bg-[#61d800] border-b-4 border-[#58a700] active:border-b-0 active:translate-y-[2px] transition-all"
-        >
-          VERIFICAR
-        </Button>
+        {/* Difficulty indicator */}
+        <div className="text-center text-sm text-gray-500">
+          <p>Nível: <span className="font-semibold">Easy</span></p>
+          <p className="text-xs text-gray-400 mt-1">
+            Clica em "Reproduzir" para ouvir a frase com destaque visual
+          </p>
+        </div>
       </main>
 
       {/* Result Panel */}

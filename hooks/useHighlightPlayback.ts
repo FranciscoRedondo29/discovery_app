@@ -10,9 +10,9 @@ interface HighlightPlaybackReturn {
   tokens: string[];
 }
 
-const SYLLABLE_DURATION_MS = 300; // 0.3s per syllable
-const SPACE_DURATION_MS = 300; // 0.3s pause for spaces (no highlight)
-const HYPHEN_DURATION_MS = 300; // 0.3s pause between syllables of same word (no highlight)
+const SYLLABLE_DURATION_MS = 500; // 0.5s per syllable
+const SPACE_DURATION_MS = 240; // 0.24s pause for spaces (no highlight)
+const HYPHEN_DURATION_MS = 240; // 0.24s pause between syllables of same word (no highlight)
 
 /**
  * Parse syllables string into tokens preserving spaces and hyphens

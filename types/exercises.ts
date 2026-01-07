@@ -81,6 +81,15 @@ export interface InsertDictationMetrics {
 
 
 /**
+ * Word timing for audio synchronization
+ */
+export interface WordTiming {
+  word: string;
+  start: number;
+  end: number;
+}
+
+/**
  * Phrase interface for Reading Practice
  * Represents pre-defined phrases for reading exercises
  */
@@ -89,4 +98,6 @@ export interface Phrase {
   level: 'easy' | 'medium' | 'hard';
   text: string;
   syllables?: string;
+  audioFile?: string;
+  wordTimings?: WordTiming[];
 }
