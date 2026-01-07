@@ -279,12 +279,17 @@ export function useSyllableAudio(
       const activeContext = audioContextRef.current;
 
       // Resume AudioContext if suspended (browser autoplay policy)
-      if (activeContext.state === 'suspended') {
+      if (activeContext && activeContext.state === 'suspended') {
         console.log('[useSyllableAudio] Resuming suspended AudioContext...');
         await activeContext.resume();
         console.log('[useSyllableAudio] AudioContext state after resume:', activeContext.state);
-      } else {
+      } else if (activeContext) {
         console.log('[useSyllableAudio] AudioContext state:', activeContext.state);
+      }
+
+      // Guard against null activeContext
+      if (!activeContext) {
+        throw new Error('AudioContext is not available');
       }
 
       setIsLoading(false);

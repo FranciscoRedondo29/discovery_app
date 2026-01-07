@@ -437,26 +437,12 @@ export default function LearningPage() {
                 Próxima Frase
               </Button>
 
-              {/* Toggle Syllables Button */}
-              <Button
-                onClick={handleToggleSyllables}
-                disabled={isLoading || !currentPhrase}
-                variant="outline"
-                className="bg-white border-blue-500 border-2 text-blue-600 hover:bg-blue-50 font-bold text-lg px-8 py-7 rounded-2xl shadow-sm min-w-[220px]"
-              >
-                {showSyllables ? 'Ver Frase' : 'Dividir Sílabas'}
-              </Button>
-            </div>
-
-            {/* Hint Text */}
-            <div className="text-center space-y-2">
-              <p className="text-gray-500 font-bold text-sm tracking-wide">
-                Nível: <span className="uppercase">{difficulty}</span>
-              </p>
-              <p className="text-gray-400 font-medium">
-                Clica em "Reproduzir" para ouvir a frase com destaque visual
-              </p>
-            </div>
+          {/* Info Text */}
+          <div className="text-center text-sm text-text-primary/60 space-y-1">
+            <p>
+              Nível: <span className="font-medium capitalize">{difficulty}</span>
+            </p>
+            <p>Clica em &quot;Reproduzir&quot; para ouvir a frase com destaque visual</p>
           </div>
         </div>
       </main>
