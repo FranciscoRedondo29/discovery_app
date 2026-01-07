@@ -4,6 +4,7 @@
  */
 export interface Exercise {
   id: string;
+  number: number;
   content: string;
   difficulty: 'easy' | 'medium' | 'hard';
   created_at: string;

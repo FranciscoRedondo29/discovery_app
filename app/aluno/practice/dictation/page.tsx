@@ -38,6 +38,7 @@ function DictationPageContent() {
   const [error, setError] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyPT>(getDifficultyFromURL());
   const [metricsSaved, setMetricsSaved] = useState(false);
+  const [seenExerciseIds, setSeenExerciseIds] = useState<string[]>([]);
 
   // Audio hook
   const { play, isPlaying, isLoading: audioLoading, stop } = useDictationAudio();
@@ -63,9 +64,11 @@ function DictationPageContent() {
 
     try {
       const difficultyEN = difficultyPTtoEN(selectedDifficulty);
-      const exercise = await getRandomExercise(difficultyEN);
+      const exercise = await getRandomExercise(difficultyEN, seenExerciseIds);
       if (exercise) {
         setCurrentExercise(exercise);
+        // Add to seen list
+        setSeenExerciseIds(prev => [...prev, exercise.id]);
       } else {
         setError(`Nenhum exercício disponível para o nível ${DIFFICULTY_LABELS[selectedDifficulty]}`);
       }
@@ -157,6 +160,8 @@ function DictationPageContent() {
 
   const handleDifficultyChange = (difficulty: DifficultyPT) => {
     setSelectedDifficulty(difficulty);
+    // Reset seen exercises when changing difficulty
+    setSeenExerciseIds([]);
     // Update URL query param
     const url = new URL(window.location.href);
     url.searchParams.set('nivel', difficulty);
@@ -254,10 +259,17 @@ function DictationPageContent() {
           {/* Audio Section */}
           <Card className="border-2 border-gray-200">
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Volume2 className="h-5 w-5 text-primary-yellow" />
-                Ouvir Frase
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Volume2 className="h-5 w-5 text-primary-yellow" />
+                  Ouvir Frase
+                </CardTitle>
+                {currentExercise && (
+                  <span className="text-sm font-semibold text-primary-yellow bg-primary-yellow/10 px-3 py-1 rounded-full">
+                    Exercício #{currentExercise.number}
+                  </span>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <Button
