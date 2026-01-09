@@ -4,28 +4,84 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Sparkles, ArrowLeft } from "lucide-react";
+import { Sparkles, ArrowLeft, Home } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import type { User } from "@supabase/supabase-js";
+import type { ProfileType } from "@/types/auth";
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [profileType, setProfileType] = useState<ProfileType | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    async function fetchUserProfile() {
+      // Check current session
+      const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
+
+      if (session?.user) {
+        // Check if user is aluno
+        const { data: alunoData } = await supabase
+          .from("alunos")
+          .select("id")
+          .eq("id", session.user.id)
+          .single();
+
+        if (alunoData) {
+          setProfileType("aluno");
+        } else {
+          // Check if user is profissional
+          const { data: profissionalData } = await supabase
+            .from("profissionais")
+            .select("id")
+            .eq("id", session.user.id)
+            .single();
+
+          if (profissionalData) {
+            setProfileType("profissional");
+          }
+        }
+      } else {
+        setProfileType(null);
+      }
+
       setLoading(false);
-    });
+    }
+
+    fetchUserProfile();
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        // Re-fetch profile type on auth change
+        const { data: alunoData } = await supabase
+          .from("alunos")
+          .select("id")
+          .eq("id", session.user.id)
+          .single();
+
+        if (alunoData) {
+          setProfileType("aluno");
+        } else {
+          const { data: profissionalData } = await supabase
+            .from("profissionais")
+            .select("id")
+            .eq("id", session.user.id)
+            .single();
+
+          if (profissionalData) {
+            setProfileType("profissional");
+          }
+        }
+      } else {
+        setProfileType(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -33,6 +89,8 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    setUser(null);
+    setProfileType(null);
     router.push("/");
     router.refresh();
   };
@@ -40,6 +98,7 @@ export default function Navbar() {
   const isLoginPage = pathname === "/login";
   const isRegisterPage = pathname?.startsWith("/register");
   const isAuthPage = isLoginPage || isRegisterPage;
+  const isLandingPage = pathname === "/";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
@@ -68,7 +127,35 @@ export default function Navbar() {
           )}
           {!loading && (
             <>
-              {user ? (
+              {user && profileType && isLandingPage ? (
+                // On landing page with logged in user - show Back to role + Logout
+                <>
+                  <Link href={profileType === "aluno" ? "/aluno" : "/profissional"}>
+                    <Button
+                      variant="outline"
+                      className="border-primary-yellow text-text-primary hover:bg-soft-yellow"
+                      aria-label={profileType === "aluno" ? "Voltar para Aluno" : "Voltar para Profissional"}
+                    >
+                      <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" />
+                      <span className="hidden sm:inline">
+                        {profileType === "aluno" ? "Voltar para Aluno" : "Voltar para Profissional"}
+                      </span>
+                      <span className="sm:hidden">
+                        {profileType === "aluno" ? "Aluno" : "Profissional"}
+                      </span>
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="ghost"
+                    onClick={handleLogout}
+                    className="text-text-primary hover:bg-soft-yellow"
+                    aria-label="Sair"
+                  >
+                    Sair
+                  </Button>
+                </>
+              ) : user ? (
+                // On other pages with logged in user - just show Logout
                 <Button
                   variant="ghost"
                   onClick={handleLogout}
@@ -78,6 +165,7 @@ export default function Navbar() {
                   Sair
                 </Button>
               ) : (
+                // Not logged in - show Login and Register
                 <>
                   {!isLoginPage && (
                     <Link href="/login">

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
-import { LogOut, Eye, CheckSquare } from "lucide-react";
+import { LogOut, Eye, CheckSquare, Home } from "lucide-react";
 import LinkByEmailInline from "@/components/linking/LinkByEmailInline";
 import InboxButton from "@/components/InboxButton";
 
@@ -156,6 +156,16 @@ export default function ProfissionalPage() {
           <div>
             <div className="grid grid-cols-3 items-center">
               <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => router.push("/")}
+                  variant="outline"
+                  className="border-primary-yellow text-text-primary hover:bg-soft-yellow"
+                  aria-label="Voltar para início"
+                >
+                  <Home className="mr-2 h-4 w-4" aria-hidden="true" />
+                  <span className="hidden sm:inline">Início</span>
+                </Button>
+                
                 <Button
                   onClick={handleLogout}
                   variant="outline"

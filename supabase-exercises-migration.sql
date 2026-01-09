@@ -1,6 +1,7 @@
 -- Create exercises table for Learning Mode
 CREATE TABLE IF NOT EXISTS exercises (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  number INT4,
   content TEXT NOT NULL,
   difficulty TEXT NOT NULL CHECK (difficulty IN ('easy', 'medium', 'hard')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
