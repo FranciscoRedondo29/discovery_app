@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Trash2, UserPlus } from "lucide-react";
 import { useLinkByEmail } from "@/hooks/useLinkByEmail";
+import { LoadingState } from "@/components/gerir/LoadingState";
+import { GerirHeader } from "@/components/gerir/GerirHeader";
+import { AddByEmailForm } from "@/components/gerir/AddByEmailForm";
+import { PersonList } from "@/components/gerir/PersonList";
 
 export default function GerirAlunosPage() {
   const router = useRouter();
@@ -119,70 +120,37 @@ export default function GerirAlunosPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-yellow mx-auto"></div>
-          <p className="text-text-primary/70 mt-4">A carregar...</p>
-        </div>
-      </div>
-    );
+    return <LoadingState />;
   }
 
   return (
     <div className="min-h-screen bg-soft-yellow flex flex-col">
-      <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="container mx-auto max-w-7xl flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-text-primary">Gerir Alunos</h1>
-          <div>
-            <Button variant="ghost" onClick={() => router.push('/profissional')}>Voltar</Button>
-          </div>
-        </div>
-      </header>
+      <GerirHeader
+        title="Gerir Alunos"
+        backRoute="/profissional"
+        onBack={() => router.push('/profissional')}
+      />
 
       <main className="flex-1 container mx-auto max-w-4xl px-4 py-8">
         <div className="space-y-6">
-          <section className="bg-white border-2 border-gray-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold mb-4">Adicionar aluno por email</h2>
-            <form onSubmit={handleAddByEmail} className="flex gap-2">
-              <Input
-                type="email"
-                placeholder="Email do aluno"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="flex-1"
-                aria-label="Email do aluno"
-              />
-              <Button type="submit" disabled={adding} className="bg-primary-yellow">
-                {adding ? "A adicionar..." : "Adicionar"}
-              </Button>
-            </form>
-            {addError && <p className="text-red-600 text-sm mt-2">{addError}</p>}
-            {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
-          </section>
+          <AddByEmailForm
+            email={email}
+            onEmailChange={setEmail}
+            onSubmit={handleAddByEmail}
+            loading={adding}
+            error={error}
+            addError={addError}
+            placeholder="Email do aluno"
+            label="Adicionar aluno por email"
+          />
 
-          <section>
-            <h2 className="text-xl font-bold mb-4">Alunos ligados ({alunos.length})</h2>
-            {alunos.length === 0 ? (
-              <div className="text-text-primary/70">Nenhum aluno ligado.</div>
-            ) : (
-              <div className="grid gap-4">
-                {alunos.map((a) => (
-                  <div key={a.id} className="bg-white border rounded-lg p-4 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold">{a.nome}</div>
-                      <div className="text-sm text-text-primary/70">{a.email} • Ano {a.ano_escolaridade}</div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button className="hover:bg-primary-yellow/90 hover:text-text-primary text-primary-yellow border border-primary-yellow bg-transparent" onClick={() => handleRemove(a.id)}>
-                        <Trash2 className="mr-2 h-4 w-4" />Remover
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+          <PersonList
+            persons={alunos}
+            title="Alunos ligados"
+            emptyMessage="Nenhum aluno ligado."
+            onRemove={handleRemove}
+            renderDetails={(a) => `${a.email} • Ano ${a.ano_escolaridade}`}
+          />
         </div>
       </main>
     </div>

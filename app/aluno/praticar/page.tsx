@@ -446,7 +446,7 @@ export default function PraticarPage() {
         <div className="text-center text-sm text-gray-500">
           <p>Nível: <span className="font-semibold">Easy</span></p>
           <p className="text-xs text-gray-400 mt-1">
-            Clica em "Reproduzir" para ouvir a frase com destaque visual
+            Clica em &quot;Reproduzir&quot; para ouvir a frase com destaque visual
           </p>
         </div>
       </main>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Inbox } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
@@ -13,6 +13,27 @@ interface InboxButtonProps {
 export default function InboxButton({ userId, onClick }: InboxButtonProps) {
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  const fetchPendingCount = useCallback(async () => {
+    try {
+      const { count, error } = await supabase
+        .from("pedidos")
+        .select("*", { count: "exact", head: true })
+        .eq("destinatario_id", userId)
+        .eq("status", "pendente");
+
+      if (error) {
+        console.error("Error fetching pending count:", error);
+        return;
+      }
+
+      setPendingCount(count || 0);
+    } catch (err) {
+      console.error("Error in fetchPendingCount:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
 
   useEffect(() => {
     fetchPendingCount();
@@ -38,28 +59,7 @@ export default function InboxButton({ userId, onClick }: InboxButtonProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId]);
-
-  async function fetchPendingCount() {
-    try {
-      const { count, error } = await supabase
-        .from("pedidos")
-        .select("*", { count: "exact", head: true })
-        .eq("destinatario_id", userId)
-        .eq("status", "pendente");
-
-      if (error) {
-        console.error("Error fetching pending count:", error);
-        return;
-      }
-
-      setPendingCount(count || 0);
-    } catch (err) {
-      console.error("Error in fetchPendingCount:", err);
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, [userId, fetchPendingCount]);
 
   return (
     <div className="relative">

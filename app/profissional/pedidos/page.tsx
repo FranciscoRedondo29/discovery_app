@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
-import Inbox from "@/components/Inbox";
+import Inbox from "@/components/alunoProfissionalPage/Inbox";
 
 export default function ProfissionalPedidosPage() {
   const router = useRouter();

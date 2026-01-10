@@ -302,7 +302,7 @@ export default function Inbox({ userType, userId, onAccept, onDecline }: InboxPr
               <Button
                 onClick={() => handleAccept(pedido.id)}
                 disabled={actionLoading !== null}
-                className="bg-primary-yellow hover:bg-primary-yellow/90 text-text-primary"
+                className="bg-yellow-600 hover:bg-yellow-700 text-white"
                 aria-label={`Aceitar pedido de ${pedido.solicitante_nome || "utilizador"}`}
               >
                 <Check className="h-4 w-4 mr-1" aria-hidden="true" />
@@ -312,7 +312,7 @@ export default function Inbox({ userType, userId, onAccept, onDecline }: InboxPr
                 onClick={() => handleDecline(pedido.id)}
                 disabled={actionLoading !== null}
                 variant="outline"
-                className="border-primary-yellow text-primary-yellow hover:bg-primary-yellow/10"
+                className="border-yellow-600 text-yellow-700 hover:bg-yellow-50"
                 aria-label={`Recusar pedido de ${pedido.solicitante_nome || "utilizador"}`}
               >
                 <X className="h-4 w-4 mr-1" aria-hidden="true" />
