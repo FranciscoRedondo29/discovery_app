@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Play, Pause, SkipForward, Settings, RefreshCw } from "lucide-react";
 import { useHighlightPlayback } from "@/hooks/useHighlightPlayback";
 import { useWordHighlight } from "@/hooks/useWordHighlight";
@@ -19,7 +22,6 @@ export default function LearningPage() {
   // State management
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
-  const [fontSize, setFontSize] = useState("text-2xl");
   const [currentText, setCurrentText] = useState("");
   const [syllables, setSyllables] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -54,16 +56,6 @@ export default function LearningPage() {
     }
   }, [highlight.isPlaying, wordHighlight.isPlaying, isPlaybackStarted, currentPhrase]);
 
-  // Font size options
-  const fontSizeOptions = [
-    { label: "Pequeno", value: "text-xl", size: 20 },
-    { label: "Médio", value: "text-2xl", size: 24 },
-    { label: "Grande", value: "text-3xl", size: 30 },
-    { label: "Muito Grande", value: "text-4xl", size: 36 },
-  ];
-
-  const currentFontIndex = fontSizeOptions.findIndex((opt) => opt.value === fontSize);
-
   // Load initial phrase on mount
   useEffect(() => {
     loadNextPhrase();
@@ -80,7 +72,8 @@ export default function LearningPage() {
       setSyllables(syllableArray);
       highlight.reset();
     }
-  }, [currentPhrase, highlight]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPhrase]);
 
   function loadNextPhrase() {
     setIsLoading(true);
@@ -136,6 +129,8 @@ export default function LearningPage() {
         audioRef.current.pause();
       }
       audioRef.current = new Audio(currentPhrase.audioFile);
+      // Apply playback speed
+      audioRef.current.playbackRate = playbackSpeed;
       audioRef.current.play().catch(err => console.error('Error playing audio:', err));
     }
 
@@ -146,7 +141,7 @@ export default function LearningPage() {
         if (audioRef.current) audioRef.current.pause();
       } else {
         if (currentPhrase && currentPhrase.syllables) {
-          highlight.play(currentPhrase.syllables);
+          highlight.play(currentPhrase.syllables, playbackSpeed);
           setIsPlaybackStarted(true);
         }
       }
@@ -157,7 +152,7 @@ export default function LearningPage() {
         if (audioRef.current) audioRef.current.pause();
       } else {
         if (currentPhrase && currentPhrase.wordTimings) {
-          wordHighlight.play(currentPhrase.wordTimings);
+          wordHighlight.play(currentPhrase.wordTimings, playbackSpeed);
           setIsPlaybackStarted(true);
         }
       }
@@ -196,54 +191,80 @@ export default function LearningPage() {
     setSelectedPhraseId(firstPhrase.id);
   };
 
-  const handleIncreaseFontSize = () => {
-    if (currentFontIndex < fontSizeOptions.length - 1) {
-      setFontSize(fontSizeOptions[currentFontIndex + 1].value);
-    }
-  };
-
-  const handleDecreaseFontSize = () => {
-    if (currentFontIndex > 0) {
-      setFontSize(fontSizeOptions[currentFontIndex - 1].value);
-    }
-  };
-
-  const handleSyllableClick = (index: number) => {
-    // For now, just log the syllable click
-    // Future: Could implement individual syllable playback
-    console.log(`Clicked syllable ${index}: ${syllables[index]}`);
-  };
 
   return (
     <div className="min-h-screen bg-[#FEFCE8] flex flex-col">
       {/* Header */}
       <header className="px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link href="/aluno">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-gray-800 hover:bg-gray-100 cursor-pointer"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-gray-800 hover:bg-gray-100 cursor-pointer"
+            onClick={() => router.push('/aluno')}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
           <h1 className="text-2xl font-bold text-gray-800">
             Modo de Leitura
           </h1>
         </div>
         
         <div className="flex items-center gap-2">
-          <Button
-            onClick={() => setShowSettings(!showSettings)}
-            variant="outline"
-            size="sm"
-            className="border-primary-yellow text-text-primary hover:bg-soft-yellow rounded-lg px-4"
-          >
-            <Settings className="h-4 w-4 mr-2" />
-            Definições
-          </Button>
+          <Popover open={showSettings} onOpenChange={setShowSettings}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-primary-yellow text-text-primary hover:bg-soft-yellow rounded-lg px-4"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Definições
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 bg-white shadow-lg rounded-lg p-4" align="end">
+              <div className="space-y-6">
+                <h3 className="font-semibold text-lg text-gray-800 mb-4">Definições</h3>
+                
+                {/* Playback Speed Control */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-700">Velocidade de Leitura</label>
+                    <span className="text-sm text-gray-600">{playbackSpeed.toFixed(1)}x</span>
+                  </div>
+                  <Slider
+                    value={[playbackSpeed]}
+                    onValueChange={(value) => setPlaybackSpeed(value[0])}
+                    min={0.5}
+                    max={1.5}
+                    step={0.1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>0.5x</span>
+                    <span>1.5x</span>
+                  </div>
+                </div>
+
+                {/* Syllable Division Toggle */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-gray-700">Divisão Silábica</label>
+                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                        (Em desenvolvimento)
+                      </span>
+                    </div>
+                    <Switch
+                      checked={showSyllables}
+                      onCheckedChange={handleToggleSyllables}
+                    />
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </header>
 

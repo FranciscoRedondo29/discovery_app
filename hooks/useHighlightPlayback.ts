@@ -4,7 +4,7 @@ interface HighlightPlaybackReturn {
   isPlaying: boolean;
   currentTokenIndex: number;
   currentSyllableIndex: number; // Index of current syllable (excluding spaces/hyphens)
-  play: (syllablesString: string) => void;
+  play: (syllablesString: string, playbackSpeed?: number) => void;
   pause: () => void;
   reset: () => void;
   tokens: string[];
@@ -78,7 +78,7 @@ export function useHighlightPlayback(): HighlightPlaybackReturn {
     syllableIndexRef.current = 0;
   }, [pause]);
 
-  const play = useCallback((syllablesString: string) => {
+  const play = useCallback((syllablesString: string, playbackSpeed: number = 1.0) => {
     reset();
     
     const parsedTokens = parseSyllables(syllablesString);
@@ -106,7 +106,7 @@ export function useHighlightPlayback(): HighlightPlaybackReturn {
         setCurrentSyllableIndex(-1); // No highlight during pause
         const duration = token === ' ' ? SPACE_DURATION_MS : HYPHEN_DURATION_MS;
         indexRef.current++;
-        timeoutRef.current = setTimeout(playNext, duration);
+        timeoutRef.current = setTimeout(playNext, duration / playbackSpeed);
         return;
       }
       
@@ -116,7 +116,7 @@ export function useHighlightPlayback(): HighlightPlaybackReturn {
       
       indexRef.current++;
       syllableIndexRef.current++;
-      timeoutRef.current = setTimeout(playNext, SYLLABLE_DURATION_MS);
+      timeoutRef.current = setTimeout(playNext, SYLLABLE_DURATION_MS / playbackSpeed);
     };
     
     playNext();

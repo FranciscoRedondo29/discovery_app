@@ -5,7 +5,7 @@ interface WordHighlightReturn {
   isPlaying: boolean;
   currentWordIndex: number;
   words: string[];
-  play: (wordTimings: WordTiming[]) => void;
+  play: (wordTimings: WordTiming[], playbackSpeed?: number) => void;
   pause: () => void;
   reset: () => void;
   startTime: number | null;
@@ -46,7 +46,7 @@ export function useWordHighlight(): WordHighlightReturn {
     wordTimingsRef.current = [];
   }, [pause]);
 
-  const play = useCallback((wordTimings: WordTiming[]) => {
+  const play = useCallback((wordTimings: WordTiming[], playbackSpeed: number = 1.0) => {
     reset();
     
     if (!wordTimings || wordTimings.length === 0) return;
@@ -66,7 +66,7 @@ export function useWordHighlight(): WordHighlightReturn {
     const updateHighlight = () => {
       if (!startTimeRef.current) return;
       
-      const elapsed = (performance.now() - startTimeRef.current) / 1000; // Convert to seconds
+      const elapsed = ((performance.now() - startTimeRef.current) / 1000) * playbackSpeed; // Adjust for playback speed
       const timings = wordTimingsRef.current;
       
       // Find which word should be highlighted based on elapsed time
