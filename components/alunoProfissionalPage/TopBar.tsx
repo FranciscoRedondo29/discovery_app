@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Home, LogOut } from "lucide-react";
+import { Home, LogOut, LucideIcon } from "lucide-react";
 import InboxButton from "./InboxButton";
 import LinkByEmailInline from "@/components/linking/LinkByEmailInline";
 
@@ -11,6 +11,8 @@ interface TopBarProps {
   userEmail: string;
   userType: "aluno" | "profissional";
   showAddForm: boolean;
+  homeButtonText?: string;
+  homeButtonIcon?: LucideIcon;
   onHomeClick: () => void;
   onLogoutClick: () => void;
   onInboxClick: () => void;
@@ -23,6 +25,8 @@ export default function TopBar({
   userEmail,
   userType,
   showAddForm,
+  homeButtonText = "Início",
+  homeButtonIcon: HomeButtonIcon = Home,
   onHomeClick,
   onLogoutClick,
   onInboxClick,
@@ -46,8 +50,8 @@ export default function TopBar({
                 className="border-primary-yellow text-text-primary hover:bg-soft-yellow"
                 aria-label="Voltar para início"
               >
-                <Home className="mr-2 h-4 w-4" aria-hidden="true" />
-                <span className="hidden sm:inline">Início</span>
+                <HomeButtonIcon className="mr-2 h-4 w-4" aria-hidden="true" />
+                <span className="hidden sm:inline">{homeButtonText}</span>
               </Button>
 
               <Button

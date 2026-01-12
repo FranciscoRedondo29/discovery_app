@@ -7,6 +7,7 @@ import TopBar from "@/components/alunoProfissionalPage/TopBar";
 import LoadingState from "@/components/alunoProfissionalPage/LoadingState";
 import ErrorState from "@/components/alunoProfissionalPage/ErrorState";
 import StudentProgressView from "@/components/progress/StudentProgressView";
+import { ArrowLeft } from "lucide-react";
 
 export default function ProgressPage() {
   const router = useRouter();
@@ -84,6 +85,8 @@ export default function ProgressPage() {
         userEmail={userEmail}
         userType="aluno"
         showAddForm={showAddForm}
+        homeButtonText="Voltar"
+        homeButtonIcon={ArrowLeft}
         onHomeClick={() => router.push("/aluno")}
         onLogoutClick={handleLogout}
         onInboxClick={() => router.push("/aluno/pedidos")}

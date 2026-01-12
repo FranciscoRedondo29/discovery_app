@@ -144,7 +144,7 @@ export default function AlunoPage() {
                 Praticar
               </h2>
               <p className="text-text-primary/70 max-w-md">
-                Lê em voz alta e recebe feedback imediato
+                Exercícios de leitura e escrita com feedback imediato
               </p>
             </div>
           </button>
@@ -160,7 +160,7 @@ export default function AlunoPage() {
                 <TrendingUp className="h-6 w-6 text-primary-yellow" aria-hidden="true" />
               </div>
               <h2 className="text-2xl font-bold text-text-primary">
-                Meu Progresso
+                O meu Progresso
               </h2>
               <p className="text-text-primary/70 max-w-md text-sm">
                 Vê o teu desempenho e evolução
