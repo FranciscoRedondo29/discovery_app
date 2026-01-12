@@ -209,6 +209,8 @@ function DictationPageContent() {
         missingCount: evaluationResult.omissionErrors,
         extraCount: evaluationResult.insertionErrors,
         accuracyPercent: evaluationResult.accuracyPercentage,
+        details: evaluationResult.detailedDiff,
+        transcript: userInput,
       });
 
       if (result.success) {

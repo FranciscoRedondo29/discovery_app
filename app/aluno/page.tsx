@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Mic } from "lucide-react";
+import { BookOpen, Mic, TrendingUp } from "lucide-react";
 import TopBar from "@/components/alunoProfissionalPage/TopBar";
 import LoadingState from "@/components/alunoProfissionalPage/LoadingState";
 import ErrorState from "@/components/alunoProfissionalPage/ErrorState";
@@ -79,6 +79,10 @@ export default function AlunoPage() {
     router.push("/aluno/practice");
   };
 
+  const handleProgress = () => {
+    router.push("/aluno/progress");
+  };
+
   // Loading state
   if (loading) {
     return <LoadingState />;
@@ -141,6 +145,25 @@ export default function AlunoPage() {
               </h2>
               <p className="text-text-primary/70 max-w-md">
                 Lê em voz alta e recebe feedback imediato
+              </p>
+            </div>
+          </button>
+
+          {/* Progress Button */}
+          <button
+            onClick={handleProgress}
+            className="w-full bg-white hover:bg-primary-yellow/10 border-2 border-primary-yellow rounded-2xl p-8 transition-all duration-300 hover:shadow-xl group"
+            aria-label="Meu Progresso"
+          >
+            <div className="flex flex-col items-center space-y-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-soft-yellow group-hover:bg-primary-yellow/20 transition-colors">
+                <TrendingUp className="h-6 w-6 text-primary-yellow" aria-hidden="true" />
+              </div>
+              <h2 className="text-2xl font-bold text-text-primary">
+                Meu Progresso
+              </h2>
+              <p className="text-text-primary/70 max-w-md text-sm">
+                Vê o teu desempenho e evolução
               </p>
             </div>
           </button>
