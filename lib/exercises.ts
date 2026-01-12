@@ -102,6 +102,8 @@ export async function insertDictationMetrics(
         missing_count: metrics.missingCount,
         extra_count: metrics.extraCount,
         accuracy_percent: metrics.accuracyPercent,
+        details: metrics.details || null,
+        transcript: metrics.transcript || null,
       });
 
     if (error) {

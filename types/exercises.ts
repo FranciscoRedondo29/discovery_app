@@ -62,6 +62,8 @@ export interface DictationMetrics {
   missing_count: number;
   extra_count: number;
   accuracy_percent: number;
+  details?: any; // Detailed diff array with dyslexia-specific error analysis
+  transcript?: string; // Raw student input text
   created_at: string;
 }
 
@@ -77,6 +79,8 @@ export interface InsertDictationMetrics {
   missingCount: number;
   extraCount: number;
   accuracyPercent: number;
+  details?: any; // Detailed diff array with dyslexia-specific error analysis
+  transcript?: string; // Raw student input text
 }
 
 
