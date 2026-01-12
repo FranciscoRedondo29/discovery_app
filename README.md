@@ -60,6 +60,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
 ```
 
 Notes:
+
 - These values come from Supabase: Project Settings → API.
 - Do not commit `.env.local`.
 
@@ -67,9 +68,10 @@ Notes:
 
 1. Create a Supabase project.
 2. Open Supabase Dashboard → SQL Editor.
-3. Run the SQL in `supabase-schema.sql`.
+3. Run the SQL in `database/supabase-schema.sql`.
 
 This sets up:
+
 - Tables: `alunos`, `profissionais`
 - Constraints (including `ano_escolaridade` range and `funcao` allowed values)
 - Row Level Security (RLS) + policies so a user can insert/select/update their own row
@@ -90,6 +92,7 @@ This sets up:
   - `/aluno` and `/profissional` re-check the session and validate membership in the correct table to prevent direct URL access by unauthorized users
 
 Implementation note:
+
 - The `/login` route is wrapped in a React `<Suspense>` boundary because it uses `useSearchParams()` (required by Next.js App Router for build/prerender compatibility).
 
 ### Design system
@@ -121,7 +124,8 @@ app/
 components/ui/                  # shadcn/ui components + Navbar
 hooks/
 lib/
-supabase-schema.sql
+database/                       # SQL migration files
+docs/                           # Documentation
 ```
 
 ### Troubleshooting
@@ -153,9 +157,10 @@ npm run dev
 ### Optional docs
 
 The repository includes additional notes (some content overlaps with this README):
-- `QUICK_START.md`
-- `SETUP.md`
-- `AUTH_IMPLEMENTATION.md`
-- `REGISTRATION_SUMMARY.md`
-- `VERIFICATION_CHECKLIST.md`
-- `PROJECT_SUMMARY.md`
+
+- `docs/QUICK_START.md`
+- `docs/SETUP.md`
+- `docs/AUTH_IMPLEMENTATION.md`
+- `docs/REGISTRATION_SUMMARY.md`
+- `docs/VERIFICATION_CHECKLIST.md`
+- `docs/PROJECT_SUMMARY.md`

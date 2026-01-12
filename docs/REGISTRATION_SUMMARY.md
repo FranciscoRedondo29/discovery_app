@@ -3,13 +3,15 @@
 ## ✅ Changes Completed
 
 ### 1. Added "Nome" field for both profiles
+
 - **Location**: First field in registration form
 - **Validation**: Required, minimum 2 characters
 - **Helper text**: "Primeiro e Último nome" (displayed below the input)
 - **Applies to**: Both Aluno and Profissional profiles
 
 ### 2. Added "Função" dropdown for Profissional
-- **Options**: 
+
+- **Options**:
   - Psicólogo(a)
   - Terapeuta da fala
   - Professor(a)
@@ -22,12 +24,14 @@
 ### Modified Files
 
 1. **`types/auth.ts`**
+
    - Added `FuncaoProfissional` type with 4 options
    - Added `nome: string` to `AlunoData` and `ProfissionalData`
    - Added `funcao: FuncaoProfissional` to `ProfissionalData`
    - Updated `RegistrationFormData` to include both new fields
 
-2. **`supabase-schema.sql`**
+2. **`../database/supabase-schema.sql`**
+
    - Updated table definitions to include `nome` column in both tables
    - Added `funcao` column to `profissionais` table with CHECK constraint
    - Added migration section for existing tables
@@ -59,6 +63,7 @@
 ## 🗄️ Database Schema Changes
 
 ### Alunos Table
+
 ```sql
 CREATE TABLE IF NOT EXISTS alunos (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -71,6 +76,7 @@ CREATE TABLE IF NOT EXISTS alunos (
 ```
 
 ### Profissionais Table
+
 ```sql
 CREATE TABLE IF NOT EXISTS profissionais (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -105,17 +111,17 @@ ALTER TABLE profissionais ALTER COLUMN nome SET NOT NULL;
 ALTER TABLE profissionais ALTER COLUMN funcao SET NOT NULL;
 
 -- Add/Update CHECK constraint
-DO $$ 
+DO $$
 BEGIN
   IF EXISTS (
-    SELECT 1 FROM pg_constraint 
+    SELECT 1 FROM pg_constraint
     WHERE conname = 'profissionais_funcao_check'
   ) THEN
     ALTER TABLE profissionais DROP CONSTRAINT profissionais_funcao_check;
   END IF;
-  
-  ALTER TABLE profissionais 
-  ADD CONSTRAINT profissionais_funcao_check 
+
+  ALTER TABLE profissionais
+  ADD CONSTRAINT profissionais_funcao_check
   CHECK (funcao IN ('Psicólogo(a)', 'Terapeuta da fala', 'Professor(a)', 'Outro'));
 END $$;
 ```
@@ -123,9 +129,10 @@ END $$;
 ### 2. Verify Changes
 
 Check that columns exist:
+
 ```sql
-SELECT column_name, data_type, is_nullable 
-FROM information_schema.columns 
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
 WHERE table_name IN ('alunos', 'profissionais')
 ORDER BY table_name, ordinal_position;
 ```
@@ -133,6 +140,7 @@ ORDER BY table_name, ordinal_position;
 ## 🧪 Testing Checklist
 
 ### Aluno Flow
+
 - [ ] Navigate to `/register`
 - [ ] Select "Aluno" profile
 - [ ] See "Nome" field as first field
@@ -144,6 +152,7 @@ ORDER BY table_name, ordinal_position;
 - [ ] Login with credentials → Success
 
 ### Profissional Flow
+
 - [ ] Navigate to `/register`
 - [ ] Select "Profissional" profile
 - [ ] See "Nome" field as first field
@@ -156,6 +165,7 @@ ORDER BY table_name, ordinal_position;
 - [ ] Login with credentials → Success
 
 ### Form Validation
+
 - [ ] Empty Nome → Error: "Por favor, introduza o seu nome completo (mínimo 2 caracteres)."
 - [ ] Nome < 2 chars → Same error
 - [ ] Empty Função (profissional) → Error: "Por favor, selecione a sua função."
@@ -165,6 +175,7 @@ ORDER BY table_name, ordinal_position;
 - [ ] Invalid Ano de Escolaridade → Error: "O ano de escolaridade deve ser entre 1 e 12."
 
 ### UI/UX
+
 - [ ] Helper text visible and properly styled
 - [ ] Form fields are in correct order
 - [ ] Select dropdown uses Radix UI component
@@ -183,6 +194,7 @@ ORDER BY table_name, ordinal_position;
 ## 🔒 Security & Validation
 
 ### Client-side Validation
+
 - Nome: Required, minimum 2 characters, trimmed
 - Função: Required for profissional, must be one of 4 valid options
 - Email: Required, must contain @
@@ -191,6 +203,7 @@ ORDER BY table_name, ordinal_position;
 - Ano de Escolaridade: Required for aluno, integer 1-12
 
 ### Database Constraints
+
 - `nome`: NOT NULL in both tables
 - `funcao`: NOT NULL with CHECK constraint for valid values
 - Foreign key: `id` references `auth.users(id)` with CASCADE delete
@@ -200,7 +213,7 @@ ORDER BY table_name, ordinal_position;
 
 1. **Helper Text**: "Primeiro e Último nome" appears below Nome field
 2. **Função Options**: Psicólogo(a), Terapeuta da fala, Professor(a), Outro
-3. **Profile-specific Fields**: 
+3. **Profile-specific Fields**:
    - Aluno: Ano de Escolaridade (1-12)
    - Profissional: Função (dropdown)
 4. **Portuguese Validation Messages**: All error messages in PT
@@ -211,26 +224,31 @@ ORDER BY table_name, ordinal_position;
 ## 🐛 Troubleshooting
 
 ### "Column 'nome' does not exist"
-→ Run the SQL migration from `supabase-schema.sql`
+
+→ Run the SQL migration from `../database/supabase-schema.sql`
 
 ### "Column 'funcao' does not exist"
+
 → Run the SQL migration, it adds both `nome` and `funcao`
 
 ### "CHECK constraint violation"
+
 → Ensure função value is exactly one of: 'Psicólogo(a)', 'Terapeuta da fala', 'Professor(a)', 'Outro'
 
 ### TypeScript errors
+
 → Check that `types/auth.ts` is properly imported and `FuncaoProfissional` type is exported
 
 ### Select dropdown not working
+
 → Ensure `@radix-ui/react-select` is installed: `npm install @radix-ui/react-select`
 
 ## ✨ Next Steps
 
 After successful implementation:
+
 1. Test both registration flows thoroughly
 2. Verify database records contain correct data
 3. Update any admin dashboards to display new fields
 4. Consider adding profile edit functionality
 5. Add analytics tracking for registration funnel
-

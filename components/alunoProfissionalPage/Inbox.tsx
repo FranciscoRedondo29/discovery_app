@@ -62,7 +62,7 @@ export default function Inbox({ userType, userId, onAccept, onDecline }: InboxPr
 
       // If RPC function doesn't exist, fall back to manual query
       if (rpcError && rpcError.code === "42883") {
-        console.warn("RPC function not found, using fallback query. Please run supabase-pedidos-detalhados-rpc.sql");
+        console.warn("RPC function not found, using fallback query. Please run database/supabase-pedidos-detalhados-rpc.sql");
         await fetchPedidosFallback();
         return;
       }
@@ -158,7 +158,7 @@ export default function Inbox({ userType, userId, onAccept, onDecline }: InboxPr
         }));
 
       setPedidos(detalhados);
-      setError("Aviso: Execute supabase-pedidos-detalhados-rpc.sql no Supabase para ver detalhes completos dos pedidos");
+      setError("Aviso: Execute database/supabase-pedidos-detalhados-rpc.sql no Supabase para ver detalhes completos dos pedidos");
     } catch (err) {
       console.error("Error in fallback:", err);
       setError("Erro ao carregar pedidos");
