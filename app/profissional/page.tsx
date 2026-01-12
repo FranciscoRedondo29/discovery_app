@@ -113,8 +113,7 @@ export default function ProfissionalPage() {
   };
 
   const handleViewProgress = (alunoId: string, alunoName: string) => {
-    // TODO: Implement view progress functionality
-    alert(`Funcionalidade em desenvolvimento: Ver progresso de ${alunoName}`);
+    router.push(`/profissional/alunos/${alunoId}/progress`);
   };
 
   const handleAddTasks = (alunoId: string, alunoName: string) => {

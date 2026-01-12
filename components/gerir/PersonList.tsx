@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, TrendingUp } from "lucide-react";
+import Link from "next/link";
 
 interface Person {
   id: string;
@@ -14,6 +15,7 @@ interface PersonListProps {
   emptyMessage: string;
   onRemove: (id: string) => void;
   renderDetails: (person: Person) => React.ReactNode;
+  showProgressButton?: boolean;
 }
 
 export function PersonList({
@@ -22,6 +24,7 @@ export function PersonList({
   emptyMessage,
   onRemove,
   renderDetails,
+  showProgressButton = false,
 }: PersonListProps) {
   return (
     <section>
@@ -44,6 +47,16 @@ export function PersonList({
                 </div>
               </div>
               <div className="flex gap-2">
+                {showProgressButton && (
+                  <Link href={`/profissional/alunos/${person.id}/progress`}>
+                    <Button
+                      className="hover:bg-blue-50 hover:text-text-primary text-blue-700 border border-blue-600 bg-transparent"
+                    >
+                      <TrendingUp className="mr-2 h-4 w-4" />
+                      Ver Progresso
+                    </Button>
+                  </Link>
+                )}
                 <Button
                   className="hover:bg-yellow-50 hover:text-text-primary text-yellow-700 border border-yellow-600 bg-transparent"
                   onClick={() => onRemove(person.id)}

@@ -150,6 +150,7 @@ export default function GerirAlunosPage() {
             emptyMessage="Nenhum aluno ligado."
             onRemove={handleRemove}
             renderDetails={(a) => `${a.email} • Ano ${a.ano_escolaridade}`}
+            showProgressButton={true}
           />
         </div>
       </main>
