@@ -115,3 +115,76 @@ export interface Phrase {
   audioFile?: string;
   wordTimings?: WordTiming[];
 }
+
+// ========================================
+// READING MODE TYPES
+// ========================================
+
+/**
+ * Reading exercise from database
+ * Compatible with frontend Phrase interface but uses UUID
+ */
+export interface ReadingExercise {
+  id: string;  // UUID from database
+  number: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  text: string;
+  audioFile: string;
+  wordTimings: WordTiming[];
+  syllables?: string;
+}
+
+/**
+ * Reading progress entry
+ * Tracks which exercises a student has completed
+ */
+export interface ReadingProgress {
+  id: string;
+  student_id: string;
+  exercise_id: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  completed_at: string;
+}
+
+/**
+ * Reading progress summary
+ * Overview of student progress at a specific difficulty
+ */
+export interface ReadingProgressSummary {
+  total_exercises: number;
+  completed_exercises: number;
+  next_exercise_number: number;
+  progress_percent: number;
+}
+
+/**
+ * Reading metrics payload for insertion
+ */
+export interface InsertReadingMetrics {
+  studentId: string;
+  exerciseId: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  playbackCount?: number;
+  timeSpentSeconds?: number;
+  accuracyPercent?: number;
+  playbackSpeed?: number;
+  syllableModeUsed?: boolean;
+  sessionData?: Record<string, any>;
+}
+
+/**
+ * Reading metrics database record
+ */
+export interface ReadingMetrics {
+  id: string;
+  student_id: string;
+  exercise_id: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  playback_count: number;
+  time_spent_seconds?: number;
+  accuracy_percent?: number;
+  playback_speed: number;
+  syllable_mode_used: boolean;
+  session_data?: Record<string, any>;
+  created_at: string;
+}

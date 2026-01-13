@@ -146,7 +146,7 @@ export const PHRASES: Phrase[] = [
     level: 'medium', 
     text: 'O Pedro pinta uma parede branca.', 
     syllables: 'O Pe-dro pin-ta u-ma pa-re-de bran-ca.', 
-    audioFile: '/audios/O Pedro pinta uma parede branca.m4a',
+    audioFile: '/audios/O Pedro pinta uma parede branca..m4a',
     wordTimings: [
       { word: 'O', start: 0, end: 0.4 },
       { word: 'Pedro', start: 0.4, end: 1.4 },
@@ -425,12 +425,12 @@ export const PHRASES: Phrase[] = [
   { 
     id: 27, 
     level: 'hard', 
-    text: 'A dália tem um livro de estudo do meio.', 
-    syllables: 'A dá-lia tem um li-vro de es-tu-do do mei-o.', 
-    audioFile: '/audios/A dália tem um livro de estudo do meio.m4a',
+    text: 'A Dália tem um livro de estudo do meio.', 
+    syllables: 'A Dá-lia tem um li-vro de es-tu-do do mei-o.', 
+    audioFile: '/audios/A Dália tem um livro de estudo do meio.m4a',
     wordTimings: [
       { word: 'A', start: 0, end: 0.8 },
-      { word: 'dália', start: 0.8, end: 1.7 },
+      { word: 'Dália', start: 0.8, end: 1.7 },
       { word: 'tem', start: 1.7, end: 2.4 },
       { word: 'um', start: 2.4, end: 3.0 },
       { word: 'livro', start: 3.0, end: 3.8 },
