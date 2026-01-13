@@ -102,6 +102,16 @@ export async function insertDictationMetrics(
         missing_count: metrics.missingCount,
         extra_count: metrics.extraCount,
         accuracy_percent: metrics.accuracyPercent,
+        // Granular metrics
+        letter_omission_count: metrics.letterOmissionCount ?? 0,
+        letter_insertion_count: metrics.letterInsertionCount ?? 0,
+        letter_substitution_count: metrics.letterSubstitutionCount ?? 0,
+        transposition_count: metrics.transpositionCount ?? 0,
+        split_join_count: metrics.splitJoinCount ?? 0,
+        punctuation_error_count: metrics.punctuationErrorCount ?? 0,
+        capitalization_error_count: metrics.capitalizationErrorCount ?? 0,
+        error_words: metrics.errorWords ?? [],
+        resolution: metrics.resolution ?? metrics.transcript ?? null,
         details: metrics.details || null,
         transcript: metrics.transcript || null,
       });

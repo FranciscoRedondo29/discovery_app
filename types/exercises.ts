@@ -79,6 +79,16 @@ export interface InsertDictationMetrics {
   missingCount: number;
   extraCount: number;
   accuracyPercent: number;
+  // Granular metrics
+  letterOmissionCount?: number;
+  letterInsertionCount?: number;
+  letterSubstitutionCount?: number;
+  transpositionCount?: number;
+  splitJoinCount?: number;
+  punctuationErrorCount?: number;
+  capitalizationErrorCount?: number;
+  errorWords?: string[];
+  resolution?: string;
   details?: any; // Detailed diff array with dyslexia-specific error analysis
   transcript?: string; // Raw student input text
 }
