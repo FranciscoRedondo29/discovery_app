@@ -8,11 +8,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Play, Pause, SkipForward, Settings, RefreshCw } from "lucide-react";
+import { ArrowLeft, Play, Pause, SkipForward, Settings, RefreshCw, Upload } from "lucide-react";
 import { useHighlightPlayback } from "@/hooks/useHighlightPlayback";
 import { useWordHighlight } from "@/hooks/useWordHighlight";
 import { useSentenceAudio } from "@/hooks/useSentenceAudio";
 import { useWordAudio } from "@/hooks/useWordAudio";
+import { useAudioWordSplitter } from "@/hooks/useAudioWordSplitter";
 import { WordWithAudio } from "@/components/practice/WordWithAudio";
 import { PHRASES, getPhrasesByLevel } from "@/lib/phrases";
 import type { Exercise, Phrase, WordTiming } from "@/types/exercises";
@@ -36,10 +37,12 @@ export default function LearningPage() {
   const [completedExercises, setCompletedExercises] = useState<Set<number>>(new Set());
   const [hasFinishedPlayback, setHasFinishedPlayback] = useState(false);
   const [isPlaybackStarted, setIsPlaybackStarted] = useState(false);
+  const [showUploadMode, setShowUploadMode] = useState(false);
 
   // Audio hooks
   const sentenceAudio = useSentenceAudio();
   const wordAudio = useWordAudio();
+  const audioSplitter = useAudioWordSplitter();
   
   // Highlight playback hook for syllables mode
   const highlight = useHighlightPlayback();
@@ -90,8 +93,22 @@ export default function LearningPage() {
   useEffect(() => {
     if (currentPhrase?.audioFile) {
       sentenceAudio.loadAudio(currentPhrase.audioFile);
+      // Carregar áudio no splitter para segmentação automática
+      loadPhraseAudioForSegmentation(currentPhrase.audioFile);
     }
-  }, [currentPhrase, sentenceAudio]);
+  }, [currentPhrase]);
+
+  // Carregar áudio no audioSplitter para segmentação automática
+  const loadPhraseAudioForSegmentation = async (audioUrl: string) => {
+    try {
+      const response = await fetch(audioUrl);
+      const blob = await response.blob();
+      const file = new File([blob], audioUrl.split('/').pop() || 'audio.m4a', { type: blob.type });
+      await audioSplitter.carregarAudio(file);
+    } catch (err) {
+      console.error('Erro ao carregar áudio para segmentação:', err);
+    }
+  };
 
   function loadNextPhrase() {
     setIsLoading(true);
@@ -157,11 +174,19 @@ export default function LearningPage() {
         sentenceAudio.pause();
         wordHighlight.pause();
       } else {
-        if (currentPhrase && currentPhrase.wordTimings && sentenceAudio.audioBuffer) {
+        // Converter audioSegments em WordTimings para o highlighting
+        const words = currentText.split(/\s+/);
+        const dynamicWordTimings: WordTiming[] = audioSplitter.audioSegments.map((segment, index) => ({
+          word: words[index] || '',
+          start: segment.start,
+          end: segment.start + segment.duration
+        }));
+
+        if (sentenceAudio.audioBuffer && dynamicWordTimings.length > 0) {
           // Start sentence audio playback
           sentenceAudio.play(playbackSpeed);
-          // Start word highlighting synchronized with audio
-          wordHighlight.play(currentPhrase.wordTimings, playbackSpeed);
+          // Start word highlighting synchronized with audio using automatic timings
+          wordHighlight.play(dynamicWordTimings, playbackSpeed);
           setIsPlaybackStarted(true);
         }
       }
@@ -169,16 +194,26 @@ export default function LearningPage() {
   };
 
   /**
-   * Handle word click - play individual word audio
+   * Handle word click - play individual word audio using audioSplitter segments
    * Only enabled when sentence audio is not playing
    */
-  const handleWordClick = async (word: string, wordTiming: WordTiming) => {
-    if (sentenceAudio.audioBuffer && !sentenceAudio.isPlaying) {
+  const handleWordClick = async (word: string, index: number) => {
+    if (!sentenceAudio.isPlaying && audioSplitter.audioSegments[index]) {
       try {
-        await wordAudio.playWord(word, wordTiming, sentenceAudio.audioBuffer);
+        audioSplitter.tocarSegmento(audioSplitter.audioSegments[index], index);
       } catch (err) {
         console.error('Error playing word audio:', err);
       }
+    }
+  };
+
+  /**
+   * Handle audio file upload
+   */
+  const handleAudioUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      await audioSplitter.carregarAudio(file);
     }
   };
 
@@ -241,6 +276,17 @@ export default function LearningPage() {
         </div>
         
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowUploadMode(!showUploadMode)}
+            className={`border-primary-yellow text-text-primary hover:bg-soft-yellow rounded-lg px-4 ${
+              showUploadMode ? 'bg-primary-yellow' : ''
+            }`}
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            {showUploadMode ? 'Ver Frases' : 'Upload Áudio'}
+          </Button>
           <Popover open={showSettings} onOpenChange={setShowSettings}>
             <PopoverTrigger asChild>
               <Button
@@ -297,6 +343,116 @@ export default function LearningPage() {
         </div>
       </header>
 
+      {/* Upload Mode Section */}
+      {showUploadMode ? (
+        <div className="px-6 py-6 mx-6">
+          <Card className="border rounded-2xl shadow-sm bg-white">
+            <CardContent className="p-8">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Upload de Áudio para Segmentação</h2>
+              
+              {/* Upload Input */}
+              <div className="mb-6">
+                <label className="block mb-2">
+                  <div className="flex items-center justify-center w-full p-6 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-yellow transition-colors">
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={handleAudioUpload}
+                      className="hidden"
+                      id="audio-upload"
+                    />
+                    <label htmlFor="audio-upload" className="cursor-pointer text-center">
+                      <Upload className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                      <p className="text-gray-600">Clica para selecionar ficheiro de áudio</p>
+                      <p className="text-sm text-gray-400 mt-1">MP3, WAV, M4A, etc.</p>
+                    </label>
+                  </div>
+                </label>
+
+                {audioSplitter.audioFileName && (
+                  <p className="text-sm text-gray-600 mt-2">Ficheiro: {audioSplitter.audioFileName}</p>
+                )}
+
+                {audioSplitter.segmentandoAudio && (
+                  <div className="text-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-yellow mx-auto"></div>
+                    <p className="text-gray-600 mt-2">A segmentar áudio...</p>
+                  </div>
+                )}
+
+                {audioSplitter.segmentError && (
+                  <p className="text-red-600 text-sm mt-2">{audioSplitter.segmentError}</p>
+                )}
+              </div>
+
+              {/* Palavras Segmentadas */}
+              {audioSplitter.palavras.length > 0 && audioSplitter.audioSegments.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                    Palavras Encontradas ({audioSplitter.palavras.length})
+                  </h3>
+                  
+                  <div className="flex flex-wrap gap-4 p-6 bg-gray-50 rounded-lg min-h-[200px]">
+                    {audioSplitter.palavras.map((palavra, index) => {
+                      const segment = audioSplitter.audioSegments[index];
+                      const isPlaying = audioSplitter.playbackInfo?.index === index;
+                      
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => segment && audioSplitter.tocarSegmento(segment, index)}
+                          disabled={!segment}
+                          className={`
+                            px-6 py-3 rounded-xl font-bold text-2xl transition-all duration-200
+                            ${
+                              isPlaying
+                                ? 'bg-primary-yellow text-white scale-110 shadow-lg ring-2 ring-primary-yellow/50'
+                                : segment
+                                ? 'bg-white text-gray-800 hover:bg-gray-100 hover:scale-105 cursor-pointer shadow-sm'
+                                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            }
+                          `}
+                          style={{ fontFamily: "'OpenDyslexic', sans-serif" }}
+                        >
+                          {palavra}
+                          
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {audioSplitter.playbackInfo && (
+                    <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        A reproduzir: <strong>{audioSplitter.playbackInfo.palavra}</strong>
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Controlo de Threshold */}
+                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <label className="text-sm font-medium text-gray-700 block mb-2">
+                      Sensibilidade de Silêncio: {audioSplitter.silenceThreshold.toFixed(3)}
+                    </label>
+                    <Slider
+                      value={[audioSplitter.silenceThreshold]}
+                      onValueChange={(value) => audioSplitter.setSilenceThreshold(value[0])}
+                      min={0.001}
+                      max={0.1}
+                      step={0.001}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      Ajusta para melhorar a deteção de palavras (valor baixo = mais sensível)
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <>
       {/* Difficulty Levels Section */}
       <div className="px-6 py-6 bg-white mx-6 rounded-xl shadow-sm">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Nível de Dificuldade</h2>
@@ -449,18 +605,33 @@ export default function LearningPage() {
                     // Full phrase mode (words with highlighting and click-to-hear)
                     <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4 min-h-[150px] px-10">
                       {currentText.split(/\s+/).map((word, index) => {
-                        const wordTiming = currentPhrase?.wordTimings?.[index];
+                        const segment = audioSplitter.audioSegments[index];
+                        const isPlayingWord = audioSplitter.playbackInfo?.index === index;
+                        
                         return (
-                          <WordWithAudio
+                          <button
                             key={`${index}-${word}`}
-                            word={word}
-                            index={index}
-                            isHighlightedBySentence={wordHighlight.currentWordIndex === index}
-                            isPlayingWord={wordAudio.currentPlayingWord === word}
-                            interactionsEnabled={!sentenceAudio.isPlaying && !sentenceAudio.isLoading}
-                            wordTiming={wordTiming}
-                            onWordClick={handleWordClick}
-                          />
+                            onClick={() => handleWordClick(word, index)}
+                            disabled={!segment || sentenceAudio.isPlaying || sentenceAudio.isLoading}
+                            className={`
+                              text-4xl md:text-5xl font-bold transition-all duration-200 tracking-wider
+                              ${
+                                isPlayingWord
+                                  ? 'text-white bg-primary-yellow px-4 py-2 rounded-xl scale-110 shadow-xl ring-2 ring-primary-yellow/50'
+                                  : wordHighlight.isPlaying && wordHighlight.currentWordIndex === index
+                                  ? 'text-white bg-primary-yellow px-4 py-2 rounded-xl scale-110 shadow-lg'
+                                  : segment && !sentenceAudio.isPlaying
+                                  ? 'text-gray-800 hover:scale-105 hover:opacity-80 cursor-pointer'
+                                  : 'text-gray-800 cursor-default'
+                              }
+                            `}
+                            style={{ fontFamily: "'OpenDyslexic', sans-serif" }}
+                            role={segment ? "button" : undefined}
+                            aria-label={segment ? `Ouvir palavra: ${word}` : undefined}
+                            tabIndex={segment && !sentenceAudio.isPlaying ? 0 : -1}
+                          >
+                            {word}
+                          </button>
                         );
                       })}
                     </div>
@@ -518,6 +689,8 @@ export default function LearningPage() {
           </div>
         </div>
       </main>
+      </>
+      )}
     </div>
   );
 }
