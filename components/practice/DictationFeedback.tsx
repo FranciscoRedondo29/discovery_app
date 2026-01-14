@@ -1,5 +1,88 @@
 import React from 'react';
-import type { DiffToken } from '@/lib/logic/dictation';
+import type { DiffToken } from '@/lib/logic/dictation';// Já tens:
+{
+  word: "aluno",
+  start: 0.5,  // segundos
+  end: 1.2
+}
+
+// Solução:
+1. Carregar AudioBuffer da frase (já fazes isto)
+2. Extrair samples [0.5s → 1.2s]
+3. Criar novo AudioBuffer só com esses samples
+4. Reproduzir quando user clica// playWord("aluno")
+await playSyllable("a");   // → gap
+await playSyllable("lu");  // → gap
+await playSyllable("no");const buffer = concatenate([
+  loadSyllable("a"),
+  loadSyllable("lu"),
+  loadSyllable("no")
+]);// playWord("aluno")
+await playSyllable("a");   // → gap
+await playSyllable("lu");  // → gap
+await playSyllable("no");// playWord("aluno")
+await playSyllable("a");   // → gap
+await playSyllable("lu");  // → gap
+await playSyllable("no");// playWord("aluno")
+await playSyllable("a");   // → gap
+await playSyllable("lu");  // → gap
+await playSyllable("no");// playWord("aluno")
+await playSyllable("a");   // → gap
+await playSyllable("lu");  // → gap
+await playSyllable("no");// hooks/useWordAudio.ts
+export function useWordAudio() {
+  const [isPlayingWord, setIsPlayingWord] = useState(false);
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+
+  const playWord = async (
+    word: string,
+    wordTiming: WordTiming,
+    sentenceBuffer: AudioBuffer
+  ) => {
+    // 1. Extract segment
+    const start = wordTiming.start * sampleRate;
+    const end = wordTiming.end * sampleRate;
+    const duration = end - start;
+
+    // 2. Create new buffer
+    const wordBuffer = audioContext.createBuffer(
+      channels,
+      duration,
+      sampleRate
+    );
+
+    // 3. Copy audio data
+    for (let i = 0; i < duration; i++) {
+      wordBuffer[i] = sentenceBuffer[start + i];
+    }
+
+    // 4. Play
+    const source = audioContext.createBufferSource();
+    source.buffer = wordBuffer;
+    source.connect(audioContext.destination);
+    source.start(0);
+    
+    setIsPlayingWord(true);
+    source.onended = () => setIsPlayingWord(false);
+  };
+
+  return { playWord, isPlayingWord };
+}// Stop word audio when sentence starts
+useEffect(() => {
+  if (wordHighlight.isPlaying) {
+    wordAudio.stopWord();
+  }
+}, [wordHighlight.isPlaying]);
+
+// Disable word clicks during sentence playback
+const canClickWord = !wordHighlight.isPlaying && !isLoading;┌─────────────────┬──────────────┬─────────────┬───────────┐
+│ Approach        │ Audio Quality│ Latency     │ MVP-Ready │
+├─────────────────┼──────────────┼─────────────┼───────────┤
+│ Segmentation ✅ │ ⭐⭐⭐⭐⭐      │ Instant     │ YES       │
+│ Syllables Seq   │ ⭐⭐          │ Fast        │ Needs work│
+│ Concatenation   │ ⭐⭐⭐         │ Fast        │ Complex   │
+│ Hybrid          │ ⭐⭐⭐⭐       │ Fast        │ Phase 2   │
+└─────────────────┴──────────────┴─────────────┴───────────┘
 
 interface DictationFeedbackProps {
   tokens: DiffToken[];

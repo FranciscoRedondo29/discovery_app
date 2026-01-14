@@ -36,8 +36,8 @@ export const PHRASES: Phrase[] = [
     wordTimings: [
       { word: 'A', start: 0, end: 0.6 },
       { word: 'bola', start: 0.6, end: 1.8 },
-      { word: 'é', start: 1.8, end: 2.4 },
-      { word: 'do', start: 2.4, end: 3.5 },
+      { word: 'é', start: 1.7, end: 2.5 },
+      { word: 'do', start: 2.3, end: 3.6 },
       { word: 'Pedro.', start: 3.5, end: 5.4 }
     ]
   },
@@ -49,7 +49,7 @@ export const PHRASES: Phrase[] = [
     audioFile: '/audios/O tapete.m4a',
     wordTimings: [
       { word: 'O', start: 0, end: 0.6 },
-      { word: 'tapete.', start: 0.6, end: 1.8 }
+      { word: 'tapete.', start: 0.5, end: 2.5 }
     ]
   },
   { 
@@ -554,9 +554,4 @@ export const PHRASES: Phrase[] = [
 
 export function getPhrasesByLevel(level: 'easy' | 'medium' | 'hard'): Phrase[] {
   return PHRASES.filter(phrase => phrase.level === level);
-}
-
-export function getRandomPhrase(level: 'easy' | 'medium' | 'hard'): Phrase {
-  const phrases = getPhrasesByLevel(level);
-  return phrases[Math.floor(Math.random() * phrases.length)];
 }

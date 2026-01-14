@@ -11,8 +11,11 @@ import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Play, Pause, SkipForward, Settings, RefreshCw } from "lucide-react";
 import { useHighlightPlayback } from "@/hooks/useHighlightPlayback";
 import { useWordHighlight } from "@/hooks/useWordHighlight";
-import { PHRASES, getRandomPhrase, getPhrasesByLevel } from "@/lib/phrases";
-import type { Exercise, Phrase } from "@/types/exercises";
+import { useSentenceAudio } from "@/hooks/useSentenceAudio";
+import { useWordAudio } from "@/hooks/useWordAudio";
+import { WordWithAudio } from "@/components/practice/WordWithAudio";
+import { PHRASES, getPhrasesByLevel } from "@/lib/phrases";
+import type { Exercise, Phrase, WordTiming } from "@/types/exercises";
 
 type Difficulty = "easy" | "medium" | "hard";
 
@@ -34,19 +37,20 @@ export default function LearningPage() {
   const [hasFinishedPlayback, setHasFinishedPlayback] = useState(false);
   const [isPlaybackStarted, setIsPlaybackStarted] = useState(false);
 
-  // Audio ref
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
+  // Audio hooks
+  const sentenceAudio = useSentenceAudio();
+  const wordAudio = useWordAudio();
+  
   // Highlight playback hook for syllables mode
   const highlight = useHighlightPlayback();
   
-  // Word highlight hook for phrase mode (0.3s per syllable per word)
+  // Word highlight hook for phrase mode
   const wordHighlight = useWordHighlight();
 
   // Detect when playback finishes to enable next button and mark as complete
   useEffect(() => {
     // If playback was started and now both are not playing, it means playback finished
-    if (isPlaybackStarted && !highlight.isPlaying && !wordHighlight.isPlaying) {
+    if (isPlaybackStarted && !highlight.isPlaying && !sentenceAudio.isPlaying) {
       setHasFinishedPlayback(true);
       setIsPlaybackStarted(false);
       // Mark current exercise as completed
@@ -54,7 +58,14 @@ export default function LearningPage() {
         setCompletedExercises(prev => new Set(Array.from(prev).concat(currentPhrase.id)));
       }
     }
-  }, [highlight.isPlaying, wordHighlight.isPlaying, isPlaybackStarted, currentPhrase]);
+  }, [highlight.isPlaying, sentenceAudio.isPlaying, isPlaybackStarted, currentPhrase]);
+
+  // Stop word audio when sentence playback starts
+  useEffect(() => {
+    if (sentenceAudio.isPlaying) {
+      wordAudio.stopWord();
+    }
+  }, [sentenceAudio.isPlaying, wordAudio]);
 
   // Load initial phrase on mount
   useEffect(() => {
@@ -74,6 +85,13 @@ export default function LearningPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPhrase]);
+
+  // Load audio buffer when phrase changes
+  useEffect(() => {
+    if (currentPhrase?.audioFile) {
+      sentenceAudio.loadAudio(currentPhrase.audioFile);
+    }
+  }, [currentPhrase, sentenceAudio]);
 
   function loadNextPhrase() {
     setIsLoading(true);
@@ -123,22 +141,10 @@ export default function LearningPage() {
   }
 
   const handlePlayPause = () => {
-    // Play audio if available
-    if (currentPhrase?.audioFile) {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-      audioRef.current = new Audio(currentPhrase.audioFile);
-      // Apply playback speed
-      audioRef.current.playbackRate = playbackSpeed;
-      audioRef.current.play().catch(err => console.error('Error playing audio:', err));
-    }
-
     if (showSyllables) {
       // Syllable mode: use highlight hook
       if (highlight.isPlaying) {
         highlight.pause();
-        if (audioRef.current) audioRef.current.pause();
       } else {
         if (currentPhrase && currentPhrase.syllables) {
           highlight.play(currentPhrase.syllables, playbackSpeed);
@@ -146,12 +152,15 @@ export default function LearningPage() {
         }
       }
     } else {
-      // Phrase mode: use word highlight hook with wordTimings from audio
-      if (wordHighlight.isPlaying) {
+      // Phrase mode: play sentence audio with word highlighting
+      if (sentenceAudio.isPlaying) {
+        sentenceAudio.pause();
         wordHighlight.pause();
-        if (audioRef.current) audioRef.current.pause();
       } else {
-        if (currentPhrase && currentPhrase.wordTimings) {
+        if (currentPhrase && currentPhrase.wordTimings && sentenceAudio.audioBuffer) {
+          // Start sentence audio playback
+          sentenceAudio.play(playbackSpeed);
+          // Start word highlighting synchronized with audio
           wordHighlight.play(currentPhrase.wordTimings, playbackSpeed);
           setIsPlaybackStarted(true);
         }
@@ -159,16 +168,34 @@ export default function LearningPage() {
     }
   };
 
+  /**
+   * Handle word click - play individual word audio
+   * Only enabled when sentence audio is not playing
+   */
+  const handleWordClick = async (word: string, wordTiming: WordTiming) => {
+    if (sentenceAudio.audioBuffer && !sentenceAudio.isPlaying) {
+      try {
+        await wordAudio.playWord(word, wordTiming, sentenceAudio.audioBuffer);
+      } catch (err) {
+        console.error('Error playing word audio:', err);
+      }
+    }
+  };
+
   const handleToggleSyllables = () => {
-    // Stop any playing highlight when toggling
+    // Stop any playing audio/highlight when toggling
     highlight.pause();
+    sentenceAudio.pause();
     wordHighlight.pause();
+    wordAudio.stopWord();
     setShowSyllables(!showSyllables);
   };
 
   const handleNextSentence = () => {
     highlight.reset();
+    sentenceAudio.pause();
     wordHighlight.reset();
+    wordAudio.stopWord();
     setShowSyllables(false);
     setHasFinishedPlayback(false);
     setIsPlaybackStarted(false);
@@ -179,7 +206,9 @@ export default function LearningPage() {
     setDifficulty(newDifficulty);
     setShowSyllables(false);
     highlight.reset();
+    sentenceAudio.pause();
     wordHighlight.reset();
+    wordAudio.stopWord();
     setCompletedExercises(new Set()); // Clear progress when changing difficulty
     setHasFinishedPlayback(false);
     setIsPlaybackStarted(false);
@@ -320,11 +349,9 @@ export default function LearningPage() {
               onClick={() => {
                 // Stop any playing audio/highlight
                 highlight.reset();
+                sentenceAudio.pause();
                 wordHighlight.reset();
-                if (audioRef.current) {
-                  audioRef.current.pause();
-                  audioRef.current = null;
-                }
+                wordAudio.stopWord();
                 setHasFinishedPlayback(false);
                 setIsPlaybackStarted(false);
                 setShowSyllables(false);
@@ -356,7 +383,9 @@ export default function LearningPage() {
               onClick={() => {
                 // Reset playback
                 highlight.reset();
+                sentenceAudio.pause();
                 wordHighlight.reset();
+                wordAudio.stopWord();
                 setHasFinishedPlayback(false);
                 setIsPlaybackStarted(false);
                 setShowSyllables(false);
@@ -417,26 +446,23 @@ export default function LearningPage() {
                       ))}
                     </div>
                   ) : (
-                    // Full phrase mode (words with highlighting based on syllable count)
+                    // Full phrase mode (words with highlighting and click-to-hear)
                     <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-4 min-h-[150px] px-10">
-                      {currentText.split(/\s+/).map((word, index) => (
-                        <span
-                          key={`${index}-${word}`}
-                          className={`
-                            text-4xl md:text-5xl font-bold transition-all duration-200 tracking-wider
-                            ${
-                              wordHighlight.isPlaying && wordHighlight.currentWordIndex === index
-                                ? "text-white bg-primary-yellow px-4 py-2 rounded-xl scale-110 shadow-lg"
-                                : "text-gray-800"
-                            }
-                          `}
-                          style={{
-                            fontFamily: "'OpenDyslexic', sans-serif",
-                          }}
-                        >
-                          {word}
-                        </span>
-                      ))}
+                      {currentText.split(/\s+/).map((word, index) => {
+                        const wordTiming = currentPhrase?.wordTimings?.[index];
+                        return (
+                          <WordWithAudio
+                            key={`${index}-${word}`}
+                            word={word}
+                            index={index}
+                            isHighlightedBySentence={wordHighlight.currentWordIndex === index}
+                            isPlayingWord={wordAudio.currentPlayingWord === word}
+                            interactionsEnabled={!sentenceAudio.isPlaying && !sentenceAudio.isLoading}
+                            wordTiming={wordTiming}
+                            onWordClick={handleWordClick}
+                          />
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -450,10 +476,10 @@ export default function LearningPage() {
               {/* Play/Pause Button */}
               <Button
                 onClick={handlePlayPause}
-                disabled={isLoading || !currentPhrase}
+                disabled={isLoading || !currentPhrase || sentenceAudio.isLoading}
                 className="bg-[#E5A534] text-gray-900 hover:bg-[#E5A534]/90 font-bold text-lg px-8 py-6 rounded-2xl shadow-sm min-w-[200px]"
               >
-                {(showSyllables ? highlight.isPlaying : wordHighlight.isPlaying) ? (
+                {(showSyllables ? highlight.isPlaying : sentenceAudio.isPlaying) ? (
                   <>
                     <Pause className="h-5 w-5 mr-2 fill-current" />
                     Pausar
