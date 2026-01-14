@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { BarChart, TrendingUp, AlertCircle, Target } from "lucide-react";
 import LoadingState from "@/components/alunoProfissionalPage/LoadingState";
 import ErrorState from "@/components/alunoProfissionalPage/ErrorState";
@@ -16,6 +17,15 @@ interface DictationMetric {
   extra_count: number;
   accuracy_percent: number;
   created_at: string;
+  letter_omission_count: number;
+  letter_insertion_count: number;
+  letter_substitution_count: number;
+  transposition_count: number;
+  split_join_count: number;
+  punctuation_error_count: number;
+  capitalization_error_count: number;
+  error_words: string[];
+  resolution: string;
 }
 
 interface StudentProgressViewProps {
@@ -50,7 +60,7 @@ export default function StudentProgressView({ studentId }: StudentProgressViewPr
         // Fetch dictation metrics
         const { data: metricsData, error: metricsError } = await supabase
           .from("dictation_metrics")
-          .select("*")
+          .select("id, difficulty, correct_count, error_count, missing_count, extra_count, accuracy_percent, created_at, letter_omission_count, letter_insertion_count, letter_substitution_count, transposition_count, split_join_count, punctuation_error_count, capitalization_error_count, error_words, resolution")
           .eq("student_id", studentId)
           .order("created_at", { ascending: false });
 
@@ -203,70 +213,99 @@ export default function StudentProgressView({ studentId }: StudentProgressViewPr
               <p className="text-sm mt-2">O aluno ainda não completou nenhum exercício de prática.</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <Accordion type="single" collapsible className="space-y-2">
               {metrics.map((metric) => (
-                <div
-                  key={metric.id}
-                  className="bg-soft-yellow/30 rounded-lg p-4 border border-primary-yellow/20 hover:border-primary-yellow/40 transition-colors"
-                >
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    {/* Date and Accuracy */}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-sm font-medium text-text-primary/70">
-                          {formatDate(metric.created_at)}
-                        </span>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-yellow/20 text-primary-yellow border border-primary-yellow/30">
-                          {metric.difficulty === "easy" ? "Fácil" : metric.difficulty === "medium" ? "Médio" : "Difícil"}
-                        </span>
+                <AccordionItem key={metric.id} value={metric.id} className="bg-soft-yellow/30 rounded-lg border border-primary-yellow/20">
+                  <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-soft-yellow/50">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 w-full pr-4">
+                      {/* Date and Accuracy */}
+                      <div className="flex-1 text-left">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-sm font-medium text-text-primary/70">
+                            {formatDate(metric.created_at)}
+                          </span>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-yellow/20 text-primary-yellow border border-primary-yellow/30">
+                            {metric.difficulty === "easy" ? "Fácil" : metric.difficulty === "medium" ? "Médio" : "Difícil"}
+                          </span>
+                        </div>
+                        <div className="text-2xl font-bold text-text-primary">
+                          {metric.accuracy_percent.toFixed(1)}%
+                          <span className="text-sm font-normal text-text-primary/60 ml-2">
+                            de precisão
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-2xl font-bold text-text-primary">
-                        {metric.accuracy_percent.toFixed(1)}%
-                        <span className="text-sm font-normal text-text-primary/60 ml-2">
-                          de precisão
-                        </span>
-                      </div>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 pb-4">
+                    {/* Resolution Text */}
+                    <div className="mb-6">
+                      <h4 className="text-sm font-semibold text-text-primary/70 mb-2">
+                        Texto do Aluno:
+                      </h4>
+                      <p className="text-lg leading-relaxed text-text-primary bg-white p-4 rounded-lg border border-gray-200">
+                        {metric.resolution}
+                      </p>
                     </div>
 
-                    {/* Error Breakdown */}
-                    <div className="flex flex-wrap gap-4 md:gap-6">
-                      <div className="text-center">
-                        <div className="text-xs font-medium text-text-primary/60 mb-1">
-                          Omissões
+                    {/* Error Metrics Grid */}
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Letter Errors */}
+                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <div className="text-2xl font-bold text-red-600 mb-1">
+                          {metric.letter_omission_count + metric.letter_insertion_count + metric.letter_substitution_count}
                         </div>
-                        <div className="text-lg font-bold text-red-600">
-                          {metric.missing_count}
+                        <div className="text-xs font-medium text-text-primary/70 uppercase">
+                          Erros de Letra
                         </div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xs font-medium text-text-primary/60 mb-1">
-                          Substituições
-                        </div>
-                        <div className="text-lg font-bold text-orange-600">
-                          {metric.error_count}
+                        <div className="text-xs text-text-primary/50 mt-1">
+                          omissão + inserção + substituição
                         </div>
                       </div>
-                      <div className="text-center">
-                        <div className="text-xs font-medium text-text-primary/60 mb-1">
-                          Inserções
+
+                      {/* Transpositions */}
+                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <div className="text-2xl font-bold text-orange-600 mb-1">
+                          {metric.transposition_count}
                         </div>
-                        <div className="text-lg font-bold text-yellow-600">
-                          {metric.extra_count}
+                        <div className="text-xs font-medium text-text-primary/70 uppercase">
+                          Transposições
+                        </div>
+                        <div className="text-xs text-text-primary/50 mt-1">
+                          troca de letras
                         </div>
                       </div>
-                      <div className="text-center">
-                        <div className="text-xs font-medium text-text-primary/60 mb-1">
-                          Corretas
+
+                      {/* Formatting */}
+                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <div className="text-2xl font-bold text-blue-600 mb-1">
+                          {metric.punctuation_error_count + metric.capitalization_error_count}
                         </div>
-                        <div className="text-lg font-bold text-green-600">
-                          {metric.correct_count}
+                        <div className="text-xs font-medium text-text-primary/70 uppercase">
+                          Formatação
+                        </div>
+                        <div className="text-xs text-text-primary/50 mt-1">
+                          pontuação + maiúsculas
+                        </div>
+                      </div>
+
+                      {/* Words Missed */}
+                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <div className="text-2xl font-bold text-purple-600 mb-1">
+                          {metric.error_words.length}
+                        </div>
+                        <div className="text-xs font-medium text-text-primary/70 uppercase">
+                          Palavras Erradas
+                        </div>
+                        <div className="text-xs text-text-primary/50 mt-1">
+                          palavras com erro
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
+                  </AccordionContent>
+                </AccordionItem>
               ))}
-            </div>
+            </Accordion>
           )}
         </CardContent>
       </Card>
