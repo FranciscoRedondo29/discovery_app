@@ -26,6 +26,10 @@ interface DictationMetric {
   capitalization_error_count: number;
   error_words: string[];
   resolution: string;
+  exercise_id: string | null;
+  exercises?: {
+    content: string;
+  } | null;
 }
 
 interface StudentProgressViewProps {
@@ -57,10 +61,10 @@ export default function StudentProgressView({ studentId }: StudentProgressViewPr
 
         setStudentName(studentData.nome);
 
-        // Fetch dictation metrics
+        // Fetch dictation metrics (without join to avoid FK issues)
         const { data: metricsData, error: metricsError } = await supabase
           .from("dictation_metrics")
-          .select("id, difficulty, correct_count, error_count, missing_count, extra_count, accuracy_percent, created_at, letter_omission_count, letter_insertion_count, letter_substitution_count, transposition_count, split_join_count, punctuation_error_count, capitalization_error_count, error_words, resolution")
+          .select("id, difficulty, correct_count, error_count, missing_count, extra_count, accuracy_percent, created_at, letter_omission_count, letter_insertion_count, letter_substitution_count, transposition_count, split_join_count, punctuation_error_count, capitalization_error_count, error_words, resolution, exercise_id")
           .eq("student_id", studentId)
           .order("created_at", { ascending: false });
 
@@ -71,7 +75,38 @@ export default function StudentProgressView({ studentId }: StudentProgressViewPr
           return;
         }
 
-        setMetrics(metricsData || []);
+        // Fetch exercises in batch for all unique exercise_ids
+        const exerciseIds = [...new Set(
+          metricsData
+            ?.filter(m => m.exercise_id)
+            .map(m => m.exercise_id) || []
+        )];
+
+        let exercisesMap: Record<string, string> = {};
+        
+        if (exerciseIds.length > 0) {
+          const { data: exercisesData, error: exercisesError } = await supabase
+            .from("exercises")
+            .select("id, content")
+            .in("id", exerciseIds);
+
+          if (!exercisesError && exercisesData) {
+            exercisesMap = exercisesData.reduce((acc, ex) => {
+              acc[ex.id] = ex.content;
+              return acc;
+            }, {} as Record<string, string>);
+          }
+        }
+
+        // Map exercise content to metrics
+        const metricsWithExercises = (metricsData || []).map(metric => ({
+          ...metric,
+          exercises: metric.exercise_id && exercisesMap[metric.exercise_id]
+            ? { content: exercisesMap[metric.exercise_id] }
+            : null
+        }));
+
+        setMetrics(metricsWithExercises);
         setLoading(false);
       } catch (err) {
         console.error("Error:", err);
@@ -241,64 +276,96 @@ export default function StudentProgressView({ studentId }: StudentProgressViewPr
                     {/* Resolution Text */}
                     <div className="mb-6">
                       <h4 className="text-sm font-semibold text-text-primary/70 mb-2">
-                        Texto do Aluno:
+                        {metric.accuracy_percent === 100 ? "Texto do Aluno:" : "Comparação:"}
                       </h4>
-                      <p className="text-lg leading-relaxed text-text-primary bg-white p-4 rounded-lg border border-gray-200">
-                        {metric.resolution}
-                      </p>
+                      <div className="bg-white p-4 rounded-lg border border-gray-200">
+                        {metric.accuracy_percent === 100 ? (
+                          <p className="text-lg leading-relaxed text-green-600 font-medium">
+                            {metric.resolution}
+                          </p>
+                        ) : (
+                          <div className="space-y-3">
+                            <p className="text-base leading-relaxed text-text-primary">
+                              &ldquo;{metric.resolution}&rdquo;
+                            </p>
+                            <div className="flex items-center gap-3">
+                              <span className="text-text-primary/40 text-xl">→</span>
+                              <p className="text-xl leading-relaxed text-green-600 font-semibold">
+                                {metric.exercises?.content || "Exercício não disponível"}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Error Metrics Grid */}
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Letter Errors */}
-                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                        <div className="text-2xl font-bold text-red-600 mb-1">
-                          {metric.letter_omission_count + metric.letter_insertion_count + metric.letter_substitution_count}
-                        </div>
-                        <div className="text-xs font-medium text-text-primary/70 uppercase">
-                          Erros de Letra
-                        </div>
-                        <div className="text-xs text-text-primary/50 mt-1">
-                          omissão + inserção + substituição
-                        </div>
-                      </div>
-
-                      {/* Transpositions */}
-                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                        <div className="text-2xl font-bold text-orange-600 mb-1">
-                          {metric.transposition_count}
-                        </div>
-                        <div className="text-xs font-medium text-text-primary/70 uppercase">
-                          Transposições
-                        </div>
-                        <div className="text-xs text-text-primary/50 mt-1">
-                          troca de letras
-                        </div>
-                      </div>
-
-                      {/* Formatting */}
-                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                        <div className="text-2xl font-bold text-blue-600 mb-1">
-                          {metric.punctuation_error_count + metric.capitalization_error_count}
-                        </div>
-                        <div className="text-xs font-medium text-text-primary/70 uppercase">
-                          Formatação
-                        </div>
-                        <div className="text-xs text-text-primary/50 mt-1">
-                          pontuação + maiúsculas
-                        </div>
-                      </div>
-
-                      {/* Words Missed */}
-                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                        <div className="text-2xl font-bold text-purple-600 mb-1">
+                    <div className="space-y-4">
+                      {/* Words Missed - Large Card (spans 2 columns width) */}
+                      <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-2 border-purple-300">
+                        <div className="text-4xl font-bold text-purple-600 mb-2">
                           {metric.error_words.length}
                         </div>
-                        <div className="text-xs font-medium text-text-primary/70 uppercase">
+                        <div className="text-sm font-semibold text-text-primary/80 uppercase">
                           Palavras Erradas
                         </div>
-                        <div className="text-xs text-text-primary/50 mt-1">
+                        <div className="text-xs text-text-primary/60 mt-1">
                           palavras com erro
+                        </div>
+                      </div>
+
+                      {/* Other Metrics - 2x2 Grid */}
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Letter Errors */}
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          <div className="text-2xl font-bold text-red-600 mb-1">
+                            {metric.letter_omission_count + metric.letter_insertion_count + metric.letter_substitution_count}
+                          </div>
+                          <div className="text-xs font-medium text-text-primary/70 uppercase">
+                            Erros de Letra
+                          </div>
+                          <div className="text-xs text-text-primary/50 mt-1">
+                            omissão + inserção + substituição
+                          </div>
+                        </div>
+
+                        {/* Transpositions */}
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          <div className="text-2xl font-bold text-orange-600 mb-1">
+                            {metric.transposition_count}
+                          </div>
+                          <div className="text-xs font-medium text-text-primary/70 uppercase">
+                            Transposições
+                          </div>
+                          <div className="text-xs text-text-primary/50 mt-1">
+                            troca de letras
+                          </div>
+                        </div>
+
+                        {/* Formatting */}
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          <div className="text-2xl font-bold text-blue-600 mb-1">
+                            {metric.punctuation_error_count + metric.capitalization_error_count}
+                          </div>
+                          <div className="text-xs font-medium text-text-primary/70 uppercase">
+                            Formatação
+                          </div>
+                          <div className="text-xs text-text-primary/50 mt-1">
+                            pontuação + maiúsculas
+                          </div>
+                        </div>
+
+                        {/* Split/Join Errors - GREEN */}
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          <div className="text-2xl font-bold text-green-600 mb-1">
+                            {metric.split_join_count}
+                          </div>
+                          <div className="text-xs font-medium text-text-primary/70 uppercase">
+                            Junção/Separação
+                          </div>
+                          <div className="text-xs text-text-primary/50 mt-1">
+                            palavras juntas/separadas
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -2,6 +2,44 @@ import { supabase } from "@/lib/supabaseClient";
 import { Exercise, InsertDictationMetrics } from "@/types/exercises";
 
 /**
+ * Fetches all exercises for a given difficulty level, ordered by number
+ * 
+ * @param difficulty - The difficulty level ('easy', 'medium', or 'hard')
+ * @returns Array of exercises or empty array if none found
+ * 
+ * @example
+ * const exercises = await getAllExercises('easy');
+ */
+export async function getAllExercises(
+  difficulty: string
+): Promise<Exercise[]> {
+  try {
+    // Validate difficulty input
+    if (!['easy', 'medium', 'hard'].includes(difficulty)) {
+      console.error('Invalid difficulty level:', difficulty);
+      return [];
+    }
+
+    // Query Supabase for all exercises matching the difficulty
+    const { data, error } = await supabase
+      .from('exercises')
+      .select('*')
+      .eq('difficulty', difficulty)
+      .order('number', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching exercises:', error);
+      return [];
+    }
+
+    return (data || []) as Exercise[];
+  } catch (err) {
+    console.error('Unexpected error in getAllExercises:', err);
+    return [];
+  }
+}
+
+/**
  * Fetches exercises matching the given difficulty level, ordered by number
  * 
  * @param difficulty - The difficulty level ('easy', 'medium', or 'hard')
@@ -111,9 +149,7 @@ export async function insertDictationMetrics(
         punctuation_error_count: metrics.punctuationErrorCount ?? 0,
         capitalization_error_count: metrics.capitalizationErrorCount ?? 0,
         error_words: metrics.errorWords ?? [],
-        resolution: metrics.resolution ?? metrics.transcript ?? null,
-        details: metrics.details || null,
-        transcript: metrics.transcript || null,
+        resolution: metrics.resolution ?? null,
       });
 
     if (error) {

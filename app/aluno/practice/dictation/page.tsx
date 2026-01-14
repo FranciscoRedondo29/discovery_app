@@ -8,7 +8,7 @@ import { ArrowLeft, Check, SkipForward, Loader2 } from "lucide-react";
 // import { useDictationAudio } from "@/hooks/useDictationAudio";
 import { DictationEvaluator } from "@/lib/logic/evaluation/DictationEvaluator";
 import { EvaluationMetrics } from "@/lib/logic/evaluation/types";
-import { getRandomExercise, insertDictationMetrics } from "@/lib/exercises";
+import { getRandomExercise, getAllExercises, insertDictationMetrics } from "@/lib/exercises";
 import type { Exercise, DifficultyPT, DifficultyEN } from "@/types/exercises";
 import { DIFFICULTY_LABELS, difficultyPTtoEN, difficultyENtoPT } from "@/types/exercises";
 import { supabase } from "@/lib/supabaseClient";
@@ -44,6 +44,8 @@ function DictationPageContent() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyPT>(getDifficultyFromURL());
   const [metricsSaved, setMetricsSaved] = useState(false);
   const [seenExerciseIds, setSeenExerciseIds] = useState<string[]>([]);
+  const [allExercises, setAllExercises] = useState<Exercise[]>([]);
+  const [completedExercises, setCompletedExercises] = useState<Set<string>>(new Set());
   
   // Local audio playback state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -53,9 +55,16 @@ function DictationPageContent() {
 
   // Load exercise on mount and when difficulty changes
   useEffect(() => {
+    loadAllExercises();
     loadNewExercise();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDifficulty]);
+
+  async function loadAllExercises() {
+    const difficultyEN = difficultyPTtoEN(selectedDifficulty);
+    const exercises = await getAllExercises(difficultyEN);
+    setAllExercises(exercises);
+  }
 
   // Apply playback speed when it changes
   useEffect(() => {
@@ -99,6 +108,41 @@ function DictationPageContent() {
         setSeenExerciseIds(prev => [...prev, exercise.id]);
       } else {
         setError(`Nenhum exercício disponível para o nível ${DIFFICULTY_LABELS[selectedDifficulty]}`);
+      }
+    } catch (err) {
+      console.error("Error loading exercise:", err);
+      setError("Erro ao carregar exercício");
+    } finally {
+      setIsLoadingExercise(false);
+    }
+  }
+
+  async function loadSpecificExercise(exerciseId: string) {
+    setIsLoadingExercise(true);
+    setError("");
+    setUserInput("");
+    setResult(null);
+    setStatus("listening");
+    setMetricsSaved(false);
+    setAudioError(null);
+    
+    // Stop audio if playing
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+    }
+
+    try {
+      const exercise = allExercises.find(ex => ex.id === exerciseId);
+      if (exercise) {
+        setCurrentExercise(exercise);
+        // Add to seen list if not already there
+        if (!seenExerciseIds.includes(exerciseId)) {
+          setSeenExerciseIds(prev => [...prev, exerciseId]);
+        }
+      } else {
+        setError("Exercício não encontrado");
       }
     } catch (err) {
       console.error("Error loading exercise:", err);
@@ -257,13 +301,14 @@ function DictationPageContent() {
             })
             .map(w => w.originalWord),
         resolution: userInput,
-
-        details: evaluationResult.wordDetails as any, 
-        transcript: userInput,
       });
 
       if (result.success) {
         setMetricsSaved(true);
+        // Mark exercise as completed
+        if (currentExercise?.id) {
+          setCompletedExercises(prev => new Set(Array.from(prev).concat(currentExercise.id)));
+        }
         console.log('[saveDictationMetrics] ✓ Metrics saved successfully');
       } else {
         console.error('[saveDictationMetrics] Failed to save metrics:', result.error);
@@ -282,6 +327,7 @@ function DictationPageContent() {
     setSelectedDifficulty(difficulty);
     // Reset seen exercises when changing difficulty
     setSeenExerciseIds([]);
+    setCompletedExercises(new Set());
     // Update URL query param
     const url = new URL(window.location.href);
     url.searchParams.set('nivel', difficulty);
@@ -332,6 +378,29 @@ function DictationPageContent() {
               onSelect={handleDifficultyChange}
               disabled={isLoadingExercise || status === "evaluating"}
           />
+
+          {/* Progress Indicator - Bolinhas */}
+          {allExercises.length > 0 && (
+            <div className="flex justify-center">
+              <div className="flex gap-3">
+                {allExercises.map((exercise) => (
+                  <button
+                    key={exercise.id}
+                    onClick={() => loadSpecificExercise(exercise.id)}
+                    disabled={status === "evaluating" || isLoadingExercise}
+                    className={`w-3 h-3 rounded-full transition-colors duration-300 cursor-pointer hover:scale-125 disabled:cursor-not-allowed disabled:hover:scale-100 ${
+                      completedExercises.has(exercise.id)
+                        ? 'bg-green-500'
+                        : exercise.id === currentExercise?.id
+                        ? 'bg-gray-400 ring-2 ring-gray-500'
+                        : 'bg-gray-300 hover:bg-gray-400'
+                    }`}
+                    title={`Exercício ${exercise.number || exercise.id}: ${exercise.content}`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Error Display */}
           {error && (

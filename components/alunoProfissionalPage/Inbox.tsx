@@ -40,6 +40,7 @@ export default function Inbox({ userType, userId, onAccept, onDecline }: InboxPr
 
   useEffect(() => {
     fetchPedidos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function fetchPedidos() {

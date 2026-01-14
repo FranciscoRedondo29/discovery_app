@@ -59,6 +59,7 @@ export default function LearningPage() {
   // Load initial phrase on mount
   useEffect(() => {
     loadNextPhrase();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Parse syllables from currentPhrase when it changes

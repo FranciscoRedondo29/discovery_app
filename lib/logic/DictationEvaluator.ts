@@ -15,7 +15,7 @@ interface DiffItem {
   expected?: string; // For substitutions and omissions
 }
 
-interface DiffToken {
+export interface DiffToken {
   value: string;
   type: 'correct' | 'added' | 'missing';
 }

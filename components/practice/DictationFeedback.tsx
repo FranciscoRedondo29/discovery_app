@@ -1,5 +1,5 @@
 import React from 'react';
-import type { DiffToken } from '@/lib/logic/dictation';
+import type { DiffToken } from '@/lib/logic/DictationEvaluator';
 
 interface DictationFeedbackProps {
   tokens: DiffToken[];
