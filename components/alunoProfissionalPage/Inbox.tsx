@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Check, X } from "lucide-react";
@@ -38,12 +38,50 @@ export default function Inbox({ userType, userId, onAccept, onDecline }: InboxPr
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState("");
 
-  useEffect(() => {
-    fetchPedidos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const fetchPedidosFallback = useCallback(async () => {
+    try {
+      // Fetch pending requests without details
+      const { data: pedidosData, error: pedidosError } = await supabase
+        .from("pedidos")
+        .select("*")
+        .eq("destinatario_id", userId)
+        .eq("status", "pendente")
+        .order("criado_em", { ascending: false });
 
-  async function fetchPedidos() {
+      if (pedidosError) throw pedidosError;
+
+      if (!pedidosData || pedidosData.length === 0) {
+        setPedidos([]);
+        setLoading(false);
+        return;
+      }
+
+      // Map with minimal data (names will show as default values)
+      const detalhados: PedidoDetalhado[] = pedidosData
+        .filter((pedido) => pedido && pedido.id)
+        .map((pedido) => ({
+          ...pedido,
+          id: String(pedido.id),
+          solicitante_id: String(pedido.solicitante_id || ""),
+          destinatario_id: String(pedido.destinatario_id || ""),
+          solicitante_nome: "Utilizador",
+          solicitante_email: "Email não disponível",
+          instituicao: "Não especificado",
+          ano_escolaridade: undefined,
+          funcao: "Não especificado",
+        }));
+
+      setPedidos(detalhados);
+      setError("Aviso: Execute database/supabase-pedidos-detalhados-rpc.sql no Supabase para ver detalhes completos dos pedidos");
+    } catch (err) {
+      console.error("Error in fallback:", err);
+      setError("Erro ao carregar pedidos");
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
+  const fetchPedidos = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -123,50 +161,11 @@ export default function Inbox({ userType, userId, onAccept, onDecline }: InboxPr
     } finally {
       setLoading(false);
     }
-  }
+  }, [userId, fetchPedidosFallback]);
 
-  async function fetchPedidosFallback() {
-    try {
-      // Fetch pending requests without details
-      const { data: pedidosData, error: pedidosError } = await supabase
-        .from("pedidos")
-        .select("*")
-        .eq("destinatario_id", userId)
-        .eq("status", "pendente")
-        .order("criado_em", { ascending: false });
-
-      if (pedidosError) throw pedidosError;
-
-      if (!pedidosData || pedidosData.length === 0) {
-        setPedidos([]);
-        setLoading(false);
-        return;
-      }
-
-      // Map with minimal data (names will show as default values)
-      const detalhados: PedidoDetalhado[] = pedidosData
-        .filter((pedido) => pedido && pedido.id)
-        .map((pedido) => ({
-          ...pedido,
-          id: String(pedido.id),
-          solicitante_id: String(pedido.solicitante_id || ""),
-          destinatario_id: String(pedido.destinatario_id || ""),
-          solicitante_nome: "Utilizador",
-          solicitante_email: "Email não disponível",
-          instituicao: "Não especificado",
-          ano_escolaridade: undefined,
-          funcao: "Não especificado",
-        }));
-
-      setPedidos(detalhados);
-      setError("Aviso: Execute database/supabase-pedidos-detalhados-rpc.sql no Supabase para ver detalhes completos dos pedidos");
-    } catch (err) {
-      console.error("Error in fallback:", err);
-      setError("Erro ao carregar pedidos");
-    } finally {
-      setLoading(false);
-    }
-  }
+  useEffect(() => {
+    fetchPedidos();
+  }, [fetchPedidos]);
 
   async function handleAccept(pedidoId: string) {
     setActionLoading(pedidoId);
