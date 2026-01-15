@@ -67,38 +67,62 @@ const ChartContainer = React.forwardRef<
 })
 ChartContainer.displayName = "Chart"
 
+// Secure color validation function
+const isValidColor = (color: string): boolean => {
+  // Allow hex, rgb, hsl, and CSS custom properties
+  const colorRegex = /^(#[0-9a-f]{3}|#[0-9a-f]{6}|#[0-9a-f]{8}|rgb\(|rgba\(|hsl\(|hsla\(|var\(--|\w+)[\w\(\),% -]*$/i;
+  return colorRegex.test(color.trim());
+};
+
+// Sanitize CSS variable name
+const sanitizeCSSVar = (name: string): string => {
+  return name.replace(/[^a-zA-Z0-9-_]/g, '');
+};
+
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
     ([, config]) => config.theme || config.color
-  )
+  );
 
   if (!colorConfig.length) {
-    return null
+    return null;
   }
 
+  // Generate CSS safely with validation
+  const cssRules = Object.entries(THEMES)
+    .map(([theme, prefix]) => {
+      const declarations = colorConfig
+        .map(([key, itemConfig]) => {
+          const color =
+            itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
+            itemConfig.color;
+          
+          // Validate color value before including
+          if (!color || !isValidColor(color)) {
+            return null;
+          }
+          
+          const sanitizedKey = sanitizeCSSVar(key);
+          return `  --color-${sanitizedKey}: ${color};`;
+        })
+        .filter(Boolean)
+        .join("\n");
+
+      if (!declarations) {
+        return null;
+      }
+
+      return `${prefix} [data-chart=${id}] {\n${declarations}\n}`;
+    })
+    .filter(Boolean)
+    .join("\n\n");
+
   return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color =
-      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
-      itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
-  })
-  .join("\n")}
-}
-`
-          )
-          .join("\n"),
-      }}
-    />
-  )
-}
+    <style suppressHydrationWarning>
+      {cssRules}
+    </style>
+  );
+};
 
 const ChartTooltip = RechartsPrimitive.Tooltip
 
